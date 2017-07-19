@@ -45,7 +45,7 @@ public class WheelViewController {
             public void onUp(float upX, float upY, long upTime, long lastDeltaMilliseconds,
                              float xVelocity, float yVelocity, float rotateDegVelocity, float scaledVelocity) {
 
-                WheelViewController.this.wheelView.startAnim(lastDeltaMilliseconds, xVelocity, yVelocity, rotateDegVelocity);
+                WheelViewController.this.wheelView.startAnim(lastDeltaMilliseconds, yVelocity);
             }
         });
     }

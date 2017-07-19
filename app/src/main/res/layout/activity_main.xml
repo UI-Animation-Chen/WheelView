@@ -12,7 +12,7 @@
         android:layout_height="wrap_content"
         android:layout_marginTop="10dp"
         android:layout_marginLeft="30dp"
-        android:text="distanceX: "/>
+        android:text="yVelocity: "/>
     <TextView
         android:id="@+id/tv_x_value"
         android:layout_width="100dp"
