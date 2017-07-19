@@ -18,17 +18,19 @@ import android.view.View;
 
 public class WheelView extends View {
 
+    private int wheelMaxItems = 18;
+
     private int wheelViewWidth = 0;
     private int wheelViewHeight = 0;
     private int itemWidth = 0;
     private int itemHeight = 0;
 
-    private String[] itemArr = {"lalalala", "lelelele", "chenzhifei", "zhangsan", "lisi", "wangwu", "zhaoliu"};
+    private String[] itemArr = new String[18];
 
     private Camera camera = new Camera(); //default location: (0f, 0f, -8.0f), in pixels: -8.0f * 72 = -576f
                                           //will NOT be changed by camera.translateZ
 
-    private Matrix[] matrixArr = {new Matrix(), new Matrix(), new Matrix(), new Matrix(), new Matrix(), new Matrix(), new Matrix()};
+    private Matrix cameraMatrix = new Matrix();
     private Paint paint = new Paint(Paint.ANTI_ALIAS_FLAG);
 
     private float distanceY = 0;
@@ -57,6 +59,10 @@ public class WheelView extends View {
 
     public WheelView(Context context, AttributeSet attrs, int defStyle) {
         super(context, attrs, defStyle);
+
+        for (int i = 0; i < 18; i++) {
+            itemArr[i] = "陈志菲" + (i + 1);
+        }
 
         setPaint(40f);
 
@@ -130,19 +136,20 @@ public class WheelView extends View {
     }
 
     public void updateY(float movedY) {
-        if (xDeg - 60f >= 0f) { // 向上滑动到头
-            if (movedY > 0) {   // 只能向下滑
-                setDistanceY(movedY);
-            }
-
-        } else if(xDeg + 60f <= 0f){
-            if (movedY < 0) {
-                setDistanceY(movedY);
-            }
-
-        } else {
-            setDistanceY(movedY);
-        }
+//        if (xDeg - 60f >= 0f) { // 向上滑动到头
+//            if (movedY > 0) {   // 只能向下滑
+//                setDistanceY(movedY);
+//            }
+//
+//        } else if(xDeg + 60f <= 0f){
+//            if (movedY < 0) {
+//                setDistanceY(movedY);
+//            }
+//
+//        } else {
+//            setDistanceY(movedY);
+//        }
+        setDistanceY(movedY);
     }
 
     private void setDistanceY(float movedY) {
@@ -184,42 +191,43 @@ public class WheelView extends View {
 
     @Override
     protected void onDraw(Canvas canvas) {
-        setMatrixArr();
-
-        // translate canvas to locate the maxItem in center of the WheelViwe
+        // translate canvas in order to locate the maxItem in the center of the WheelViwe
         canvas.translate((wheelViewWidth - itemWidth) / 2f, (wheelViewHeight - itemHeight) / 2f);
 
-        drawCanvas(canvas);
+        drawWheelText(canvas);
     }
 
-    private void setMatrixArr() {
+    private void drawWheelText(Canvas canvas) {
         // convert distances in pixels into degrees
         xDeg = -distanceY * distanceToDegree;
 
-        for (int i = 0; i < matrixArr.length; i++) {
-            matrixArr[i].reset();
-
-            camera.save(); // save the original state(no any transformation) so you can restore it after any changes
-            camera.rotateX(xDeg + (60 - i * 20)); // it will lead to rotate Y and Z axis
-            camera.translate(0f, 0f, -cameraZtranslate);
-            camera.getMatrix(matrixArr[i]);
-            camera.restore(); // restore to the original state after uses for next use
-
-            // translate coordinate origin the camera's transformation depends on to center of the bitmap
-            matrixArr[i].preTranslate(-(itemWidth / 2), -(itemHeight / 2));
-            matrixArr[i].postTranslate(itemWidth / 2, itemHeight / 2);
+        for (int i = 0; i < wheelMaxItems; i++) {
+            setCmaraMatrixAtIndex(i);
+            drawTextAtIndex(canvas, i);
         }
 
     }
 
-    private void drawCanvas(Canvas canvas) {
+    private void setCmaraMatrixAtIndex(int index) {
+        cameraMatrix.reset();
 
-        for (int i = 0; i < matrixArr.length; i++) {
-            canvas.save();
-            canvas.concat(matrixArr[i]);
-            canvas.drawText(itemArr[i], 0, itemHeight, paint);
-            canvas.restore();
-        }
+        camera.save(); // save the original state(no any transformation) so you can restore it after any changes
+        camera.rotateX(xDeg - index * 20f); // it will lead to rotate Y and Z axis
+//        camera.rotateZ(10f);              // it will NOT lead to rotate X axis
+        camera.translate(0f, 0f, -cameraZtranslate);
+        camera.getMatrix(cameraMatrix);
+        camera.restore(); // restore to the original state after uses for next use
+
+        // translate coordinate origin the camera's transformation depends on to center of the bitmap
+        cameraMatrix.preTranslate(-(itemWidth / 2), -(itemHeight / 2));
+        cameraMatrix.postTranslate(itemWidth / 2, itemHeight / 2);
+    }
+
+    private void drawTextAtIndex(Canvas canvas, int index) {
+        canvas.save();
+        canvas.concat(cameraMatrix);
+        canvas.drawText(itemArr[index], 0, itemHeight, paint);
+        canvas.restore();
     }
 
     @Override
