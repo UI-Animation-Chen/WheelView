@@ -3,6 +3,7 @@ package com.chenzhifei.wheelview.view;
 import android.content.Context;
 import android.graphics.Camera;
 import android.graphics.Canvas;
+import android.graphics.Color;
 import android.graphics.Matrix;
 import android.graphics.Paint;
 import android.graphics.Rect;
@@ -13,31 +14,38 @@ import android.view.View;
 
 /**
  * Created by chenzhifei on 2017/6/25.
- * 使用Graphics.Camera来实现3D效果。
+ * 使用Graphics.Camera实现WheelView的3D效果。
  */
 
 public class WheelView extends View {
 
-    private int wheelMaxItems = 18;
+    private static final float RADIAN_TO_DEGREE = (float) (180.0f / Math.PI);
+    private static final float DEGREE_TO_RADIAN = (float) (Math.PI / 180.0f);
+
+    private static final float INTER_ITEM_DEGREE = 15f;
+    private static final float WHEEL_VIEW_DEGREE = 120f;
+
+    private static final float cameraLocationZ = -5;
+    private static final float cameraLocationZ_UNIT = 72;
 
     private int wheelViewWidth = 0;
     private int wheelViewHeight = 0;
     private int itemWidth = 0;
     private int itemHeight = 0;
 
-    private String[] itemArr = new String[18];
+    private String[] itemArr;
 
     private Camera camera = new Camera(); //default location: (0f, 0f, -8.0f), in pixels: -8.0f * 72 = -576f
                                           //will NOT be changed by camera.translateZ
 
     private Matrix cameraMatrix = new Matrix();
-    private Paint paint = new Paint(Paint.ANTI_ALIAS_FLAG);
+    private Paint paintText = new Paint(Paint.ANTI_ALIAS_FLAG);
+    private Paint paintCenterRect = new Paint(Paint.ANTI_ALIAS_FLAG);
 
-    private float distanceY = 0;
-    private float cameraZtranslate; // 3D rotate radius
+    private float distanceY = 0; //向下为负值，向上为正值，和屏幕y坐标相反。
+    private float wheelRadius;
 
-    private float distanceToDegree; // cameraZtranslate --> 90度
-    private float xDeg;
+    private float distanceToDegree; // wheelRadius --> 90度
 
     private boolean isInfinity = false;
     private float distanceVelocityDecrease = 1f; //decrease 1 pixels/second when a message is handled in the loop
@@ -60,12 +68,7 @@ public class WheelView extends View {
     public WheelView(Context context, AttributeSet attrs, int defStyle) {
         super(context, attrs, defStyle);
 
-        for (int i = 0; i < 18; i++) {
-            itemArr[i] = "陈志菲" + (i + 1);
-        }
-
-        setPaint(40f);
-
+        init();
         animHandler = new Handler(new Handler.Callback() {
             @Override
             public boolean handleMessage(Message msg) {
@@ -74,7 +77,7 @@ public class WheelView extends View {
                 WheelView.this.invalidate();
 
                 if (WheelView.this.stateValueListener != null) {
-                    WheelView.this.stateValueListener.stateValue(yVelocity / 1000f, -distanceY, 0f, cameraZtranslate);
+                    WheelView.this.stateValueListener.stateValue(yVelocity / 1000f, -distanceY, 0f, wheelRadius);
                 }
 
                 if (yVelocity == 0f) { // anim will stop
@@ -101,23 +104,35 @@ public class WheelView extends View {
             @Override
             public boolean handleMessage(Message msg) {
                 if (WheelView.this.stateValueListener != null) {
-                    WheelView.this.stateValueListener.stateValue(yVelocity / 1000f, -distanceY, 0f, cameraZtranslate);
+                    WheelView.this.stateValueListener.stateValue(yVelocity / 1000f, -distanceY, 0f, wheelRadius);
                 }
                 return true;
             }
         });
     }
 
-    public void setPaint(float textSize) {
-        paint.setTextSize(textSize);
-        paint.setTextAlign(Paint.Align.LEFT);
+    private void init() {
+        itemArr = new String[100];
+        for (int i = 0; i < itemArr.length; i++) {
+            itemArr[i] = "chenzhifei" + i;
+        }
+
+        camera.setLocation(0, 0, cameraLocationZ);
+
+        setPaintText(24f);
+        paintCenterRect.setColor(Color.parseColor("#77000000"));
+        paintCenterRect.setStrokeWidth(4);
+    }
+
+    public void setPaintText(float textSize) {
+        paintText.setTextSize(textSize);
         setMaxItemSize();
     }
 
     private void setMaxItemSize() {
         Rect textRect = new Rect();
         for (String item : itemArr) {
-            paint.getTextBounds(item, 0, item.length(), textRect);
+            paintText.getTextBounds(item, 0, item.length(), textRect);
             if (textRect.width() > itemWidth) {
                 itemWidth = textRect.width();
                 itemHeight = textRect.height();
@@ -136,20 +151,20 @@ public class WheelView extends View {
     }
 
     public void updateY(float movedY) {
-//        if (xDeg - 60f >= 0f) { // 向上滑动到头
-//            if (movedY > 0) {   // 只能向下滑
-//                setDistanceY(movedY);
-//            }
-//
-//        } else if(xDeg + 60f <= 0f){
-//            if (movedY < 0) {
-//                setDistanceY(movedY);
-//            }
-//
-//        } else {
-//            setDistanceY(movedY);
-//        }
-        setDistanceY(movedY);
+        // itemArr.length - 1: item --- item --- item --- item, 4 - 1 = 3
+        if (-distanceY  >= INTER_ITEM_DEGREE / distanceToDegree * (itemArr.length - 1)) { // 向上滑动到头
+            if (movedY > 0) {   // 只能向下滑
+                setDistanceY(movedY);
+            }
+
+        } else if(-distanceY <= 0f){
+            if (movedY < 0) {
+                setDistanceY(movedY);
+            }
+
+        } else {
+            setDistanceY(movedY);
+        }
     }
 
     private void setDistanceY(float movedY) {
@@ -159,7 +174,7 @@ public class WheelView extends View {
     }
 
     public void updateCameraZtranslate(float cameraZtranslate) {
-        this.cameraZtranslate += cameraZtranslate;
+        this.wheelRadius += cameraZtranslate;
         invalidate();
         touchHandler.sendEmptyMessage(0);
     }
@@ -183,10 +198,8 @@ public class WheelView extends View {
     protected void onSizeChanged(int w, int h, int oldw, int oldh) {
         wheelViewWidth = w; //params value is in pixels not dp
         wheelViewHeight = h;
-//        int min = Math.min(w, h) / 2;
-//        cameraZtranslate = min * 576f / (float) Math.sqrt(min * min + 576 * 576);
-        cameraZtranslate = 168f;
-        distanceToDegree = 90f / cameraZtranslate;//NOT changed when cameraZtranslate changed in the future
+        wheelRadius = -cameraLocationZ_UNIT * cameraLocationZ * (float)Math.cos(WHEEL_VIEW_DEGREE / 2 * DEGREE_TO_RADIAN);
+        distanceToDegree = 90f / wheelRadius;//NOT changed when wheelRadius changed in the future
     }
 
     @Override
@@ -195,26 +208,29 @@ public class WheelView extends View {
         canvas.translate((wheelViewWidth - itemWidth) / 2f, (wheelViewHeight - itemHeight) / 2f);
 
         drawWheelText(canvas);
+
+        drawCenterRect(canvas);
     }
 
     private void drawWheelText(Canvas canvas) {
-        // convert distances in pixels into degrees
-        xDeg = -distanceY * distanceToDegree;
-
-        for (int i = 0; i < wheelMaxItems; i++) {
-            setCmaraMatrixAtIndex(i);
+        float deg;
+        for (int i = 0; i < itemArr.length; i++) {
+            deg = -distanceY * distanceToDegree - i * INTER_ITEM_DEGREE;
+            if (deg < -60f || deg > 60f) {
+                continue;
+            }
+            setCmaraMatrixAtIndex(deg);
             drawTextAtIndex(canvas, i);
         }
-
     }
 
-    private void setCmaraMatrixAtIndex(int index) {
+    private void setCmaraMatrixAtIndex(float deg) {
         cameraMatrix.reset();
 
         camera.save(); // save the original state(no any transformation) so you can restore it after any changes
-        camera.rotateX(xDeg - index * 20f); // it will lead to rotate Y and Z axis
+        camera.rotateX(deg); // it will lead to rotate Y and Z axis
 //        camera.rotateZ(10f);              // it will NOT lead to rotate X axis
-        camera.translate(0f, 0f, -cameraZtranslate);
+        camera.translate(0f, 0f, -wheelRadius);
         camera.getMatrix(cameraMatrix);
         camera.restore(); // restore to the original state after uses for next use
 
@@ -226,8 +242,13 @@ public class WheelView extends View {
     private void drawTextAtIndex(Canvas canvas, int index) {
         canvas.save();
         canvas.concat(cameraMatrix);
-        canvas.drawText(itemArr[index], 0, itemHeight, paint);
+        canvas.drawText(itemArr[index], 0, itemHeight, paintText);
         canvas.restore();
+    }
+
+    private void drawCenterRect(Canvas canvas) {
+        canvas.drawLine(0f, -1.8f*itemHeight, itemWidth, -1.8f*itemHeight, paintCenterRect);
+        canvas.drawLine(0f, 2.8f*itemHeight, itemWidth, 2.8f*itemHeight, paintCenterRect);
     }
 
     @Override
