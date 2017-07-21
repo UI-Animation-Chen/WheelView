@@ -37,36 +37,36 @@
         android:layout_below="@+id/tv_x_value"
         android:text="-"/>
     <TextView
-        android:id="@+id/tv_rotate"
+        android:id="@+id/tv_x_deg"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_marginTop="10dp"
         android:layout_marginLeft="30dp"
         android:layout_below="@+id/tv_y"
-        android:text="rotateDeg: "/>
+        android:text="xDeg: "/>
     <TextView
-        android:id="@+id/tv_rotate_value"
+        android:id="@+id/tv_x_deg_value"
         android:layout_width="100dp"
         android:layout_height="wrap_content"
         android:layout_marginTop="10dp"
-        android:layout_toRightOf="@+id/tv_rotate"
+        android:layout_toRightOf="@+id/tv_x_deg"
         android:layout_below="@+id/tv_y_value"
         android:text="-"/>
     <TextView
-        android:id="@+id/tv_cameraZ"
+        android:id="@+id/tv_wheel_radius"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_marginTop="10dp"
         android:layout_marginLeft="30dp"
-        android:layout_below="@+id/tv_rotate"
-        android:text="cameraZ: "/>
+        android:layout_below="@+id/tv_x_deg"
+        android:text="wheelRadius: "/>
     <TextView
-        android:id="@+id/tv_cameraZ_value"
+        android:id="@+id/tv_wheel_radius_value"
         android:layout_width="100dp"
         android:layout_height="wrap_content"
         android:layout_marginTop="10dp"
-        android:layout_toRightOf="@+id/tv_cameraZ"
-        android:layout_below="@+id/tv_rotate_value"
+        android:layout_toRightOf="@+id/tv_wheel_radius"
+        android:layout_below="@+id/tv_x_deg_value"
         android:text="-"/>
 
     <com.chenzhifei.wheelview.view.WheelView

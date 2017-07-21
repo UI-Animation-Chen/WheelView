@@ -2,7 +2,6 @@ package com.chenzhifei.wheelview;
 
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
-import android.util.Log;
 import android.view.MotionEvent;
 import android.view.VelocityTracker;
 import android.widget.TextView;
@@ -30,19 +29,19 @@ public class MainActivity extends AppCompatActivity {
 
         xValue = (TextView) findViewById(R.id.tv_x_value);
         yValue = (TextView) findViewById(R.id.tv_y_value);
-        rotateValue = (TextView) findViewById(R.id.tv_rotate_value);
-        cameraZvalue = (TextView) findViewById(R.id.tv_cameraZ_value);
+        rotateValue = (TextView) findViewById(R.id.tv_x_deg_value);
+        cameraZvalue = (TextView) findViewById(R.id.tv_wheel_radius_value);
 
         WheelView wheelView = (WheelView) findViewById(R.id.wheel_view);
         wheelView.setStateValueListener(new WheelView.StateValueListener() {
             @Override
-            public void stateValue(float distanceX, float distanceY, float rotateDeg, float cameraZtranslate) {
-                String xvalue = "" + distanceX, yvalue = "" + distanceY, rotateDegStr = "" + rotateDeg,
-                        cameraZtranslateStr = "" + cameraZtranslate;
-                xValue.setText(xvalue);
-                yValue.setText(yvalue);
-                rotateValue.setText(rotateDegStr);
-                cameraZvalue.setText(cameraZtranslateStr);
+            public void stateValue(float yVelocity, float distanceY, float xDeg, float wheelRadius) {
+                String yVelocityStr = "" + yVelocity, distanceYStr = "" + distanceY, xDegStr = xDeg + "",
+                        wheelRadiusStr = "" + wheelRadius;
+                xValue.setText(yVelocityStr);
+                yValue.setText(distanceYStr);
+                rotateValue.setText(xDegStr);
+                cameraZvalue.setText(wheelRadiusStr);
             }
         });
 
