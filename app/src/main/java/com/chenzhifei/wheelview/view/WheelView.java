@@ -30,8 +30,8 @@ public class WheelView extends View {
 
     private int wheelViewWidth = 0;
     private int wheelViewHeight = 0;
-    private int itemWidth = 0;
-    private int itemHeight = 0;
+    private int itemMaxWidth = 0;
+    private int itemMaxHeight = 0;
 
     private String[] itemArr;
 
@@ -126,16 +126,16 @@ public class WheelView extends View {
 
     public void setPaintText(float textSize) {
         paintText.setTextSize(textSize);
-        setMaxItemSize();
+        getMaxItemSize();
     }
 
-    private void setMaxItemSize() {
+    private void getMaxItemSize() {
         Rect textRect = new Rect();
         for (String item : itemArr) {
             paintText.getTextBounds(item, 0, item.length(), textRect);
-            if (textRect.width() > itemWidth) {
-                itemWidth = textRect.width();
-                itemHeight = textRect.height();
+            if (textRect.width() > itemMaxWidth) {
+                itemMaxWidth = textRect.width();
+                itemMaxHeight = textRect.height();
             }
         }
     }
@@ -205,7 +205,7 @@ public class WheelView extends View {
     @Override
     protected void onDraw(Canvas canvas) {
         // translate canvas in order to locate the maxItem in the center of the WheelViwe
-        canvas.translate((wheelViewWidth - itemWidth) / 2f, (wheelViewHeight - itemHeight) / 2f);
+        canvas.translate((wheelViewWidth - itemMaxWidth) / 2f, (wheelViewHeight - itemMaxHeight) / 2f);
 
         drawWheelText(canvas);
 
@@ -235,20 +235,21 @@ public class WheelView extends View {
         camera.restore(); // restore to the original state after uses for next use
 
         // translate coordinate origin the camera's transformation depends on to center of the bitmap
-        cameraMatrix.preTranslate(-(itemWidth / 2), -(itemHeight / 2));
-        cameraMatrix.postTranslate(itemWidth / 2, itemHeight / 2);
+        cameraMatrix.preTranslate(-(itemMaxWidth / 2), -(itemMaxHeight / 2));
+        cameraMatrix.postTranslate(itemMaxWidth / 2, itemMaxHeight / 2);
     }
 
     private void drawTextAtIndex(Canvas canvas, int index) {
         canvas.save();
         canvas.concat(cameraMatrix);
-        canvas.drawText(itemArr[index], 0, itemHeight, paintText);
+        canvas.drawText(itemArr[index], 0, itemMaxHeight, paintText);
         canvas.restore();
     }
 
     private void drawCenterRect(Canvas canvas) {
-        canvas.drawLine(0f, -1.8f*itemHeight, itemWidth, -1.8f*itemHeight, paintCenterRect);
-        canvas.drawLine(0f, 2.8f*itemHeight, itemWidth, 2.8f*itemHeight, paintCenterRect);
+        canvas.drawLine(0f, -1.8f* itemMaxHeight, itemMaxWidth, -1.8f* itemMaxHeight, paintCenterRect);
+        canvas.drawLine(0f, 2.8f* itemMaxHeight, itemMaxWidth, 2.8f* itemMaxHeight, paintCenterRect);
+        canvas.drawLine(itemMaxWidth / 2f, itemMaxHeight / 2f, itemMaxWidth / 2f, itemMaxHeight / 2f - wheelRadius, paintCenterRect);
     }
 
     @Override
