@@ -44,10 +44,10 @@ public class WheelView extends View {
     private float distanceY = 0f; //camera.rotateX()向下为负值，向上为正值，和屏幕y坐标相反。
     private float wheelRadius;
 
-    private float distanceToDegree; // wheelRadius --> 90度
+    private float distanceToDegree; // wheelRadius --> 90°
 
     private boolean isInfinity = false;
-    private float distanceVelocityDecrease = 1f; //decrease 1 pixels/second when a message is handled in the loop
+    private float yVelocityReduce = 1f; //decrease 1 pixels/second when a message is handled in the loop
                     //loop frequency is 60hz or 120hz when handleMessage(msg) includes UI update code
     private static final float MIN_VELOCITY = 100f;
     private float yVelocity = 0f;
@@ -57,9 +57,9 @@ public class WheelView extends View {
     private static final float CLAMP_NORMAL_DELTA_DEG = 0.3f; // 0.3°
     private float willToDeg = 0f;
 
+    private Handler animHandler;
     private static final int MSG_NORMAL = 0;
     private static final int MSG_CLAMP = 1;
-    private Handler animHandler;
 
     public WheelView(Context context) {
         this(context, null);
@@ -104,7 +104,8 @@ public class WheelView extends View {
 
         WheelView.this.invalidate();
         if (WheelView.this.stateValueListener != null) {
-            WheelView.this.stateValueListener.stateValue(yVelocity, -distanceY, -distanceY * distanceToDegree, wheelRadius);
+            int currentIndex = (int)(-distanceY*distanceToDegree/INTER_ITEM_DEGREE);
+            WheelView.this.stateValueListener.stateValue(currentIndex, yVelocity, -distanceY, -distanceY * distanceToDegree, wheelRadius);
         }
     }
 
@@ -129,7 +130,8 @@ public class WheelView extends View {
 
         invalidate();
         if (WheelView.this.stateValueListener != null) {
-            WheelView.this.stateValueListener.stateValue(yVelocity, -distanceY, -distanceY * distanceToDegree, wheelRadius);
+            int currentIndex = (int)(-distanceY*distanceToDegree/INTER_ITEM_DEGREE);
+            WheelView.this.stateValueListener.stateValue(currentIndex, yVelocity, -distanceY, -distanceY * distanceToDegree, wheelRadius);
         }
     }
 
@@ -177,9 +179,9 @@ public class WheelView extends View {
 
         } else {
             // decrease the velocities.
-            // 'Math.abs(yVelocity) <= distanceVelocityDecrease' make sure the yVelocity will be 0 finally.
-            yVelocity = Math.abs(yVelocity) <= distanceVelocityDecrease ? 0f :
-                    (yVelocity > 0 ? yVelocity - distanceVelocityDecrease : yVelocity + distanceVelocityDecrease);
+            // 'Math.abs(yVelocity) <= yVelocityReduce' make sure the yVelocity will be 0 finally.
+            yVelocity = Math.abs(yVelocity) <= yVelocityReduce ? 0f :
+                    (yVelocity > 0 ? yVelocity - yVelocityReduce : yVelocity + yVelocityReduce);
 
             WheelView.this.sendMsgForAnim();
         }
@@ -225,13 +227,13 @@ public class WheelView extends View {
         }
     }
 
-    public void setDistanceVelocityDecrease(float distanceVelocityDecrease) {
-        if (distanceVelocityDecrease <= 0f) {
+    public void setYVelocityReduce(float yVelocityReduce) {
+        if (yVelocityReduce <= 0f) {
             this.isInfinity = true;
-            this.distanceVelocityDecrease = 0f;
+            this.yVelocityReduce = 0f;
         } else {
             this.isInfinity = false;
-            this.distanceVelocityDecrease = distanceVelocityDecrease;
+            this.yVelocityReduce = yVelocityReduce;
         }
     }
 
@@ -244,7 +246,8 @@ public class WheelView extends View {
         distanceY += movedY;
         invalidate();
         if (WheelView.this.stateValueListener != null) {
-            WheelView.this.stateValueListener.stateValue(yVelocity, -distanceY, -distanceY * distanceToDegree, wheelRadius);
+            int currentIndex = (int)(-distanceY*distanceToDegree/INTER_ITEM_DEGREE);
+            WheelView.this.stateValueListener.stateValue(currentIndex, yVelocity, -distanceY, -distanceY * distanceToDegree, wheelRadius);
         }
     }
 
@@ -252,7 +255,8 @@ public class WheelView extends View {
         this.wheelRadius += cameraZtranslate;
         invalidate();
         if (WheelView.this.stateValueListener != null) {
-            WheelView.this.stateValueListener.stateValue(yVelocity, -distanceY, -distanceY * distanceToDegree, wheelRadius);
+            int currentIndex = (int)(-distanceY*distanceToDegree/INTER_ITEM_DEGREE);
+            WheelView.this.stateValueListener.stateValue(currentIndex, yVelocity, -distanceY, -distanceY * distanceToDegree, wheelRadius);
         }
     }
 
@@ -359,7 +363,7 @@ public class WheelView extends View {
     }
 
     public interface StateValueListener {
-        void stateValue(float yVelocity, float distanceY, float xDeg, float wheelRadius);
+        void stateValue(int currentIndex, float yVelocity, float distanceY, float xDeg, float wheelRadius);
     }
 
     private StateValueListener stateValueListener;

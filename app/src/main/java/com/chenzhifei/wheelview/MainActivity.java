@@ -13,7 +13,7 @@ public class MainActivity extends AppCompatActivity {
 
     private TextView xValue;
     private TextView yValue;
-    private TextView rotateValue;
+    private TextView xDegValue;
     private TextView cameraZvalue;
 
     private WheelViewController wheelViewController;
@@ -29,18 +29,18 @@ public class MainActivity extends AppCompatActivity {
 
         xValue = (TextView) findViewById(R.id.tv_x_value);
         yValue = (TextView) findViewById(R.id.tv_y_value);
-        rotateValue = (TextView) findViewById(R.id.tv_x_deg_value);
+        xDegValue = (TextView) findViewById(R.id.tv_x_deg_value);
         cameraZvalue = (TextView) findViewById(R.id.tv_wheel_radius_value);
 
         WheelView wheelView = (WheelView) findViewById(R.id.wheel_view);
         wheelView.setStateValueListener(new WheelView.StateValueListener() {
             @Override
-            public void stateValue(float yVelocity, float distanceY, float xDeg, float wheelRadius) {
-                String yVelocityStr = "" + yVelocity, distanceYStr = "" + distanceY, xDegStr = xDeg + "",
+            public void stateValue(int currentIndex, float yVelocity, float distanceY, float xDeg, float wheelRadius) {
+                String yVelocityStr = "" + yVelocity, distanceYStr = "" + distanceY + "-" + currentIndex, xDegStr = xDeg + "",
                         wheelRadiusStr = "" + wheelRadius;
                 xValue.setText(yVelocityStr);
                 yValue.setText(distanceYStr);
-                rotateValue.setText(xDegStr);
+                xDegValue.setText(xDegStr);
                 cameraZvalue.setText(wheelRadiusStr);
             }
         });
