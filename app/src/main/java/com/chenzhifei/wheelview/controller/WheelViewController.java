@@ -29,7 +29,7 @@ public class WheelViewController {
 
             @Override
             public void onMoved(float deltaMovedX, float deltaMovedY, long deltaMilliseconds) {
-                WheelViewController.this.wheelView.updateY(deltaMovedY);
+                WheelViewController.this.wheelView.updateY(deltaMovedY, deltaMovedY*1000f / deltaMilliseconds);
             }
 
             @Override

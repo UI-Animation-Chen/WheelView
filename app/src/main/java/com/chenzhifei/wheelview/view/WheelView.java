@@ -10,7 +10,6 @@ import android.graphics.Rect;
 import android.os.Handler;
 import android.os.Message;
 import android.util.AttributeSet;
-import android.util.Log;
 import android.view.View;
 
 /**
@@ -24,7 +23,7 @@ public class WheelView extends View {
     private static final float DEGREE_TO_RADIAN = (float) (Math.PI / 180.0f);
 
     private static final float INTER_ITEM_DEGREE = 15f;
-    private static final float WHEEL_VIEW_DEGREE = 120f;
+    private static final float WHEEL_VIEW_DEGREE = 120f; // or 90(120 - 2*15)
 
     private static final float cameraLocationZ = -5;
     private static final float cameraLocationZ_UNIT = 72;
@@ -38,7 +37,6 @@ public class WheelView extends View {
 
     private Camera camera = new Camera(); //default location: (0f, 0f, -8.0f), in pixels: -8.0f * 72 = -576f
                                           //will NOT be changed by camera.translateZ
-
     private Matrix cameraMatrix = new Matrix();
     private Paint paintText = new Paint(Paint.ANTI_ALIAS_FLAG);
     private Paint paintCenterRect = new Paint(Paint.ANTI_ALIAS_FLAG);
@@ -51,12 +49,17 @@ public class WheelView extends View {
     private boolean isInfinity = false;
     private float distanceVelocityDecrease = 1f; //decrease 1 pixels/second when a message is handled in the loop
                     //loop frequency is 60hz or 120hz when handleMessage(msg) includes UI update code
-
+    private static final float MIN_VELOCITY = 100f;
     private float yVelocity = 0f;
     private long lastDeltaMilliseconds = 0;
+    private static final int resistanceFactor = 4; // 滑动到头时，有效滑动变为 4 分之一
+    private static final float CLAMP_MAX_MIN_DELTA_DEG = 5.0f * resistanceFactor; // 5.0°
+    private static final float CLAMP_NORMAL_DELTA_DEG = 0.3f; // 0.3°
+    private float willToDeg = 0f;
 
+    private static final int MSG_NORMAL = 0;
+    private static final int MSG_CLAMP = 1;
     private Handler animHandler;
-    private Handler touchHandler;
 
     public WheelView(Context context) {
         this(context, null);
@@ -73,43 +76,113 @@ public class WheelView extends View {
         animHandler = new Handler(new Handler.Callback() {
             @Override
             public boolean handleMessage(Message msg) {
-                updateY(yVelocity * lastDeltaMilliseconds / 1000f);
+                final float maxDeg = INTER_ITEM_DEGREE*(itemArr.length-1) - WHEEL_VIEW_DEGREE;
 
-                WheelView.this.invalidate();
-
-                if (WheelView.this.stateValueListener != null) {
-                    WheelView.this.stateValueListener.stateValue(yVelocity, -distanceY, -distanceY * distanceToDegree, wheelRadius);
-                }
-
-                if (yVelocity == 0f) { // anim will stop
-                    return true;
-                }
-
-                if (WheelView.this.isInfinity) {
-                    WheelView.this.sendMsgForAnim();
-
-                } else {
-                    // decrease the velocities.
-                    // 'Math.abs(yVelocity) <= distanceVelocityDecrease' make sure the yVelocity will be 0 finally.
-                    yVelocity = Math.abs(yVelocity) <= distanceVelocityDecrease ? 0f :
-                            (yVelocity > 0 ? yVelocity - distanceVelocityDecrease : yVelocity + distanceVelocityDecrease);
-
-                    WheelView.this.sendMsgForAnim();
+                switch (msg.what) {
+                    case MSG_NORMAL:
+                        normalAnimSliding(maxDeg);
+                        break;
+                    case MSG_CLAMP:
+                        clampItemDeg();
+                        break;
                 }
 
                 return true;
             }
         });
+    }
 
-        touchHandler = new Handler(new Handler.Callback() {
-            @Override
-            public boolean handleMessage(Message msg) {
-                if (WheelView.this.stateValueListener != null) {
-                    WheelView.this.stateValueListener.stateValue(0f, -distanceY, -distanceY * distanceToDegree, wheelRadius);
-                }
-                return true;
+    private void clampMaxMinLastDeg(float maxDeg) {
+        // 向上或向下溢出时，这里只处理最后一个delta。
+        if (-distanceY >= 0f && -distanceY <= CLAMP_MAX_MIN_DELTA_DEG /distanceToDegree) { //下滑溢出时，校准到0
+            distanceY = 0f;
+
+        } else if (-distanceY*distanceToDegree <= maxDeg
+                && -distanceY*distanceToDegree >= maxDeg - CLAMP_MAX_MIN_DELTA_DEG) {  //上滑溢出时校准到maxDeg
+            distanceY = -maxDeg/distanceToDegree;
+        }
+
+        WheelView.this.invalidate();
+        if (WheelView.this.stateValueListener != null) {
+            WheelView.this.stateValueListener.stateValue(yVelocity, -distanceY, -distanceY * distanceToDegree, wheelRadius);
+        }
+    }
+
+    private void clampItemDeg() {
+        if (-distanceY*distanceToDegree < willToDeg) {// 向上滑动，到下一个item
+            if (Math.abs(-distanceY*distanceToDegree - willToDeg) <= CLAMP_NORMAL_DELTA_DEG) {
+                distanceY = -willToDeg/distanceToDegree;
+            } else {
+                distanceY -= CLAMP_NORMAL_DELTA_DEG /distanceToDegree;
+                WheelView.this.animHandler.sendEmptyMessage(MSG_CLAMP);
             }
-        });
+
+        } else if (-distanceY*distanceToDegree > willToDeg) {//向上滑动，回到上一个item
+            if (Math.abs(-distanceY*distanceToDegree - willToDeg) <= CLAMP_NORMAL_DELTA_DEG) {
+                distanceY = -willToDeg/distanceToDegree;
+            } else {
+                distanceY += CLAMP_NORMAL_DELTA_DEG /distanceToDegree;
+                WheelView.this.animHandler.sendEmptyMessage(MSG_CLAMP);
+            }
+
+        }
+
+        invalidate();
+        if (WheelView.this.stateValueListener != null) {
+            WheelView.this.stateValueListener.stateValue(yVelocity, -distanceY, -distanceY * distanceToDegree, wheelRadius);
+        }
+    }
+
+    private void normalAnimSliding(float maxDeg) {
+        // 先判断再updateY，就会有溢出效果：判断成立，updateY后溢出。
+        // itemArr.length - 1: item --- item --- item --- item, 4 - 1 = 3
+        if ((-distanceY*distanceToDegree) > maxDeg) {// 向上滑动到头并溢出
+            yVelocity = -1f;
+            // 向下滑回到maxDeg
+            updateY(CLAMP_MAX_MIN_DELTA_DEG/distanceToDegree, yVelocity);
+            WheelView.this.sendMsgForAnim();
+
+        } else if(-distanceY < 0f){ // 向下滑动到头并溢出
+            yVelocity = -1f;
+            // 向上滑回到0
+            updateY(-CLAMP_MAX_MIN_DELTA_DEG/distanceToDegree, yVelocity);
+            WheelView.this.sendMsgForAnim();
+
+        } else {
+            if (yVelocity == -1f) {  // 只处理上滑或下滑溢出情况下的最后一个delta clamp
+                clampMaxMinLastDeg(maxDeg);
+
+            } else { // 惯性滑动
+                decelerationSliding();
+            }
+        }
+    }
+
+    private void decelerationSliding() {
+        updateY(yVelocity * lastDeltaMilliseconds / 1000f, yVelocity);
+
+        if (Math.abs(yVelocity) <= MIN_VELOCITY) { // clamp item deg
+            float offsetDeg = -distanceY*distanceToDegree % INTER_ITEM_DEGREE;
+            float clampOffsetDeg = offsetDeg >= INTER_ITEM_DEGREE/2 ? INTER_ITEM_DEGREE - offsetDeg : -offsetDeg;
+
+            int index = (int)(-distanceY*distanceToDegree / INTER_ITEM_DEGREE);
+            willToDeg = clampOffsetDeg > 0f ? (index+1) * INTER_ITEM_DEGREE : index * INTER_ITEM_DEGREE;
+
+            WheelView.this.animHandler.sendEmptyMessage(MSG_CLAMP);
+            return;
+        }
+
+        if (WheelView.this.isInfinity) {
+            WheelView.this.sendMsgForAnim();
+
+        } else {
+            // decrease the velocities.
+            // 'Math.abs(yVelocity) <= distanceVelocityDecrease' make sure the yVelocity will be 0 finally.
+            yVelocity = Math.abs(yVelocity) <= distanceVelocityDecrease ? 0f :
+                    (yVelocity > 0 ? yVelocity - distanceVelocityDecrease : yVelocity + distanceVelocityDecrease);
+
+            WheelView.this.sendMsgForAnim();
+        }
     }
 
     private void init() {
@@ -162,41 +235,29 @@ public class WheelView extends View {
         }
     }
 
-    public void updateY(float movedY) {
-        // itemArr.length - 1: item --- item --- item --- item, 4 - 1 = 3
-        if ((-distanceY * distanceToDegree + WHEEL_VIEW_DEGREE)  >= INTER_ITEM_DEGREE * (itemArr.length - 1)) { // 向上滑动到头
-            if (movedY > 0) {   // 只能向下滑
-                setDistanceY(movedY);
-            } else {
-                setDistanceY(-movedY);
-            }
-
-        } else if(-distanceY <= 0f){
-            if (movedY < 0) {
-                setDistanceY(movedY);
-            } else {
-                setDistanceY(-movedY);
-            }
-
-        } else {
-            setDistanceY(movedY);
+    public void updateY(float movedY, float yVelocity) {
+        this.yVelocity = yVelocity;
+        if (-distanceY*distanceToDegree > INTER_ITEM_DEGREE*(itemArr.length-1) - WHEEL_VIEW_DEGREE
+                || -distanceY < 0f) {
+            movedY /= resistanceFactor;
         }
-    }
-
-    private void setDistanceY(float movedY) {
-        this.distanceY += movedY;
+        distanceY += movedY;
         invalidate();
-        touchHandler.sendEmptyMessage(0);
+        if (WheelView.this.stateValueListener != null) {
+            WheelView.this.stateValueListener.stateValue(yVelocity, -distanceY, -distanceY * distanceToDegree, wheelRadius);
+        }
     }
 
     public void updateCameraZtranslate(float cameraZtranslate) {
         this.wheelRadius += cameraZtranslate;
         invalidate();
-        touchHandler.sendEmptyMessage(0);
+        if (WheelView.this.stateValueListener != null) {
+            WheelView.this.stateValueListener.stateValue(yVelocity, -distanceY, -distanceY * distanceToDegree, wheelRadius);
+        }
     }
 
     private void sendMsgForAnim() {
-        animHandler.sendEmptyMessage(0);
+        animHandler.sendEmptyMessage(MSG_NORMAL);
     }
 
     public void stopAnim() {
