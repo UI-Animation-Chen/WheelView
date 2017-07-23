@@ -18,7 +18,7 @@ public class WheelViewController {
 
     public WheelViewController(WheelView wheelView) {
         this.wheelView = wheelView;
-        this.wheelView.setYVelocityReduce(1f);
+        this.wheelView.setYVelocityReduce(3f);
 
         twoFingersGestureDetector = new TwoFingersGestureDetector();
         twoFingersGestureDetector.setTwoFingersGestureListener(new TwoFingersGestureDetector.TwoFingersGestureListener() {
@@ -29,7 +29,7 @@ public class WheelViewController {
 
             @Override
             public void onMoved(float deltaMovedX, float deltaMovedY, long deltaMilliseconds) {
-                WheelViewController.this.wheelView.updateY(deltaMovedY, deltaMovedY*1000f / deltaMilliseconds);
+                WheelViewController.this.wheelView.updateY(deltaMovedY);
             }
 
             @Override
@@ -38,7 +38,6 @@ public class WheelViewController {
 
             @Override
             public void onScaled(float deltaScaledX, float deltaScaledY, float deltaScaledDistance, long deltaMilliseconds) {
-                WheelViewController.this.wheelView.updateCameraZtranslate(deltaScaledDistance);
             }
 
             @Override
