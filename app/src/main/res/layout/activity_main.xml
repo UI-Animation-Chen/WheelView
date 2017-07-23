@@ -14,7 +14,7 @@
         android:layout_marginLeft="30dp"
         android:text="cur item: "/>
     <TextView
-        android:id="@+id/tv_value_cur_item"
+        android:id="@+id/tv_value_curr_item"
         android:layout_width="100dp"
         android:layout_height="wrap_content"
         android:layout_marginTop="10dp"
@@ -29,12 +29,12 @@
         android:layout_below="@+id/tv_cur_item"
         android:text="cur index: "/>
     <TextView
-        android:id="@+id/tv_value_cur_index"
+        android:id="@+id/tv_value_curr_index"
         android:layout_width="100dp"
         android:layout_height="wrap_content"
         android:layout_marginTop="10dp"
         android:layout_toRightOf="@+id/tv_cur_index"
-        android:layout_below="@+id/tv_value_cur_item"
+        android:layout_below="@+id/tv_value_curr_item"
         android:text="-"/>
 
     <com.chenzhifei.wheelview.view.WheelView

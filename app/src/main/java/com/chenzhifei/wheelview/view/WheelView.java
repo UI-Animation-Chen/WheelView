@@ -27,7 +27,7 @@ public class WheelView extends View {
 
     private Camera camera = new Camera(); //default location: (0f, 0f, -8.0f), in pixels: -8.0f * 72 = -576f
                                           //will NOT be changed by camera.translateZ
-    private static final int cameraLocationZ = -5;
+    private static final int cameraLocationZ = -3;
     private static final int cameraLocationZ_UNIT = 72;
 
     private static final float WHEEL_RADIUS = -cameraLocationZ * cameraLocationZ_UNIT *
@@ -62,7 +62,7 @@ public class WheelView extends View {
     private float willToDeg = 0f;
 
     private Handler animHandler;
-    private static final int MSG_NORMAL_SLIDING = 0;
+    private static final int MSG_GENERAL_SLIDING = 0;
     private static final int MSG_NORMAL_CLAMP = 1;
     private static final int MSG_MAX_MIN_CLAMP = 2;
 
@@ -82,8 +82,8 @@ public class WheelView extends View {
             @Override
             public boolean handleMessage(Message msg) {
                 switch (msg.what) {
-                    case MSG_NORMAL_SLIDING:
-                        normalAnimSliding();
+                    case MSG_GENERAL_SLIDING:
+                        generalAnimSliding();
                         break;
                     case MSG_NORMAL_CLAMP:
                         clampItemDeg(CLAMP_NORMAL_DELTA_DEG, MSG_NORMAL_CLAMP);
@@ -104,9 +104,9 @@ public class WheelView extends View {
                 distanceY = -willToDeg/ DISTANCE_TO_DEG;
 
                 if (WheelView.this.stateValueListener != null) {
-                    int currentIndex = (int)(-distanceY* DISTANCE_TO_DEG / INTER_ITEM_DEG);
-                    int arrIndex = currentIndex + WHEEL_VIEW_DEG/INTER_ITEM_DEG/2;
-                    WheelView.this.stateValueListener.stateValue(currentIndex, itemArr[arrIndex]);
+                    int currIndex = (int)(-distanceY* DISTANCE_TO_DEG / INTER_ITEM_DEG);
+                    int arrIndex = currIndex + WHEEL_VIEW_DEG/INTER_ITEM_DEG/2;
+                    WheelView.this.stateValueListener.stateValue(currIndex, itemArr[arrIndex]);
                 }
 
             } else {
@@ -119,9 +119,9 @@ public class WheelView extends View {
                 distanceY = -willToDeg/ DISTANCE_TO_DEG;
 
                 if (WheelView.this.stateValueListener != null) {
-                    int currentIndex = (int)(-distanceY* DISTANCE_TO_DEG / INTER_ITEM_DEG);
-                    int arrIndex = currentIndex + WHEEL_VIEW_DEG/INTER_ITEM_DEG/2;
-                    WheelView.this.stateValueListener.stateValue(currentIndex, itemArr[arrIndex]);
+                    int currIndex = (int)(-distanceY* DISTANCE_TO_DEG / INTER_ITEM_DEG);
+                    int arrIndex = currIndex + WHEEL_VIEW_DEG/INTER_ITEM_DEG/2;
+                    WheelView.this.stateValueListener.stateValue(currIndex, itemArr[arrIndex]);
                 }
 
             } else {
@@ -134,7 +134,7 @@ public class WheelView extends View {
         invalidate();
     }
 
-    private void normalAnimSliding() {
+    private void generalAnimSliding() {
         // itemArr.length-1: item --- item --- item, 3 - 1 = 2
         float maxDeg = INTER_ITEM_DEG*(itemArr.length-1) - WHEEL_VIEW_DEG;
 
@@ -174,7 +174,7 @@ public class WheelView extends View {
         }
 
         if (WheelView.this.isInfinity) {
-            animHandler.sendEmptyMessage(MSG_NORMAL_SLIDING);
+            animHandler.sendEmptyMessage(MSG_GENERAL_SLIDING);
 
         } else {
             // decrease the velocities.
@@ -182,37 +182,58 @@ public class WheelView extends View {
             yVelocity = Math.abs(yVelocity) <= yVelocityReduce ? 0f :
                     (yVelocity > 0 ? yVelocity - yVelocityReduce : yVelocity + yVelocityReduce);
 
-            animHandler.sendEmptyMessage(MSG_NORMAL_SLIDING);
+            animHandler.sendEmptyMessage(MSG_GENERAL_SLIDING);
         }
     }
 
     private void init() {
-        initData();
-
+        initData(new String[]{"no data"});
         camera.setLocation(0, 0, cameraLocationZ);
 
-        setPaintText(24f);
-        paintCenterRect.setColor(Color.parseColor("#77000000"));
-        paintCenterRect.setStrokeWidth(4);
+        initPaintText(14f);
+        setPaintCenterRect();
     }
 
-    private void initData() {
+    private void initData(String[] dataArr) {
+        if (null == dataArr) {
+            throw new RuntimeException("dataArr can not be a null");
+        }
+
+        if (dataArr.length == 0) {
+            dataArr = new String[]{"no data"};
+        }
+
         int extra = WHEEL_VIEW_DEG / INTER_ITEM_DEG;
-        itemArr = new String[100 + extra];
-        for (int i = 0; i < extra/2; i++) {
+        itemArr = new String[dataArr.length + extra];
+        int offset = extra/2;
+        for (int i = 0; i < offset; i++) {
             itemArr[i] = "";
         }
-        for (int i = extra/2; i < itemArr.length - extra/2; i++) {
-            itemArr[i] = "chenzhifei" + (i - extra/2);
+        for (int i = offset; i < itemArr.length - offset; i++) {
+            itemArr[i] = dataArr[i - offset];
         }
-        for (int i = itemArr.length - extra/2; i < itemArr.length; i++) {
+        for (int i = itemArr.length - offset; i < itemArr.length; i++) {
             itemArr[i] = "";
         }
     }
 
-    public void setPaintText(float textSize) {
-        paintText.setTextSize(textSize);
+    // api
+    public void setData(String[] dataArr) {
+        initData(dataArr);
         getMaxItemSize();
+        invalidate();
+    }
+
+    private void initPaintText(float textSize) {
+        paintText.setTextSize(textSize);
+        paintText.setTextAlign(Paint.Align.LEFT);
+        getMaxItemSize();
+    }
+
+    // api
+    public void setPaintText(float textSize) {
+        initPaintText(textSize);
+        invalidate();
     }
 
     private void getMaxItemSize() {
@@ -226,6 +247,26 @@ public class WheelView extends View {
         }
     }
 
+    private void setPaintCenterRect() {
+        paintCenterRect.setColor(Color.parseColor("#0000ff"));
+        paintCenterRect.setStrokeWidth(1);
+    }
+
+    // api
+    public void setItem(int index) {
+        int extra = WHEEL_VIEW_DEG/INTER_ITEM_DEG;
+        if (index < 0 || index > itemArr.length - extra) {
+            throw new ArrayIndexOutOfBoundsException(index);
+        }
+
+        distanceY = -index * INTER_ITEM_DEG / DISTANCE_TO_DEG;
+        if (WheelView.this.stateValueListener != null) {
+            WheelView.this.stateValueListener.stateValue(index, itemArr[index + extra/2]);
+        }
+        invalidate();
+    }
+
+    // api
     public void setYVelocityReduce(float yVelocityReduce) {
         if (yVelocityReduce <= 0f) {
             this.isInfinity = true;
@@ -236,6 +277,7 @@ public class WheelView extends View {
         }
     }
 
+    // api
     public void updateY(float movedY) {
         if (-distanceY* DISTANCE_TO_DEG > INTER_ITEM_DEG *(itemArr.length-1) - WHEEL_VIEW_DEG
                 || -distanceY < 0f) {
@@ -247,15 +289,17 @@ public class WheelView extends View {
         invalidate();
     }
 
+    // api
     public void stopAnim() {
         animHandler.removeCallbacksAndMessages(null);
     }
 
+    // api
     public void startAnim(long lastDeltaMilliseconds, float yVelocity) {
         this.lastDeltaMilliseconds = lastDeltaMilliseconds;
         this.yVelocity = yVelocity;
 
-        animHandler.sendEmptyMessage(MSG_NORMAL_SLIDING);
+        animHandler.sendEmptyMessage(MSG_GENERAL_SLIDING);
     }
 
     @Override
@@ -329,10 +373,11 @@ public class WheelView extends View {
     }
 
     private void drawCenterRect(Canvas canvas) {
-        canvas.drawLine(0f, -1.8f* itemMaxHeight, itemMaxWidth, -1.8f* itemMaxHeight, paintCenterRect);
-        canvas.drawLine(0f, 2.8f* itemMaxHeight, itemMaxWidth, 2.8f* itemMaxHeight, paintCenterRect);
+        canvas.drawLine(-.5f*itemMaxWidth, -.5f*itemMaxHeight, 1.5f*itemMaxWidth, -.5f*itemMaxHeight, paintCenterRect);
+        canvas.drawLine(-.5f*itemMaxWidth, 1.5f*itemMaxHeight, 1.5f*itemMaxWidth, 1.5f*itemMaxHeight, paintCenterRect);
         // draw vertical radius
-//        canvas.drawLine(itemMaxWidth / 2f, itemMaxHeight / 2f, itemMaxWidth / 2f, itemMaxHeight / 2f - WHEEL_RADIUS, paintCenterRect);
+        float scaledRadius = -cameraLocationZ*cameraLocationZ_UNIT/(float)Math.tan(WHEEL_VIEW_DEG/2*DEG_TO_RADIAN);
+        canvas.drawLine(itemMaxWidth / 2f, itemMaxHeight / 2f, itemMaxWidth / 2f, itemMaxHeight / 2f - scaledRadius, paintCenterRect);
     }
 
     @Override
@@ -344,11 +389,12 @@ public class WheelView extends View {
     }
 
     public interface StateValueListener {
-        void stateValue(int currentIndex, String item);
+        void stateValue(int currIndex, String currItem);
     }
 
     private StateValueListener stateValueListener;
 
+    // api
     public void setStateValueListener(StateValueListener stateValueListener) {
         this.stateValueListener = stateValueListener;
     }
