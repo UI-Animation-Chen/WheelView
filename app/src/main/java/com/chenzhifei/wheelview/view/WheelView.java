@@ -23,21 +23,17 @@ public class WheelView extends View {
     private static final float DEG_TO_RADIAN = (float) (Math.PI / 180.0f);
 
     private static final int INTER_ITEM_DEG = 15;  // 15°
-    private static final int WHEEL_VIEW_DEG = 120; // or 90°(120° - 2*15° = 90°)
+    private int wheelViewDeg = 120; // or 90°(120° - 2*15° = 90°)
 
+    private static final int CAMERA_LOCATION_Z_UNIT = 72;
     private Camera camera = new Camera(); //default location: (0f, 0f, -8.0f), in pixels: -8.0f * 72 = -576f
                                           //will NOT be changed by camera.translateZ
-    private static final int cameraLocationZ = -3;
-    private static final int cameraLocationZ_UNIT = 72;
+    private final Matrix cameraMatrix = new Matrix();
+    private final Paint paintText = new Paint(Paint.ANTI_ALIAS_FLAG);
+    private final Paint paintCenterRect = new Paint();
 
-    private static final float WHEEL_RADIUS = -cameraLocationZ * cameraLocationZ_UNIT *
-                                             (float)Math.cos(WHEEL_VIEW_DEG / 2 * DEG_TO_RADIAN);
-
-    private static final float DISTANCE_TO_DEG = 45f / WHEEL_RADIUS; // WHEEL_RADIUS --> 45°
-
-    private Matrix cameraMatrix = new Matrix();
-    private Paint paintText = new Paint(Paint.ANTI_ALIAS_FLAG);
-    private Paint paintCenterRect = new Paint();
+    private float wheelRadius;
+    private float distanceToDeg = -1f; // onSizeChanged里进行设置: wheelRadius --> 45°
 
     private int wheelViewWidth = 0;
     private int wheelViewHeight = 0;
@@ -46,23 +42,21 @@ public class WheelView extends View {
 
     private String[] itemArr;
 
-    private float distanceY = 0f; //camera.rotateX()向下为负值，向上为正值，和屏幕y坐标相反。
-
-    private boolean isInfinity = false;
-    private float yVelocityReduce = 1f; //decrease 1 pixels/second when a message is handled in the loop
-                    //loop frequency is 60hz or 120hz when handleMessage(msg) includes UI update code
-
     private static final float MIN_VELOCITY = 50f; // pixels/second
+    private float distanceY = 0f; //camera.rotateX()向下为负值，向上为正值，和屏幕y坐标相反。
     private float yVelocity = 0f;   // pixels/second
     private long lastDeltaMilliseconds = 0;
+    private boolean isInfinity = false;
+    private float yVelocityReduce = 1f; //decrease 1 pixels/second when a message is handled in the loop
+                        //loop frequency is 60hz or 120hz when handleMessage(msg) includes UI update code
 
     private static final int RESISTANCE_FACTOR = 4; // 滑动到头时，有效滑动变为 4 分之一
-    private static final float CLAMP_MAX_MIN_DELTA_DEG = 1.6f; // 1.6°
-    private static final float CLAMP_NORMAL_DELTA_DEG = 0.4f; // 0.4°/16.67ms ~ 24°/s, or twice
+    private static final float CLAMP_MAX_MIN_DELTA_DEG = 2.0f; // 2.0°
+    private static final float CLAMP_NORMAL_DELTA_DEG = 0.5f; // 0.5°/16.67ms ~ 30°/s, or twice
     private float willToDeg = 0f;
 
     private Handler animHandler;
-    private static final int MSG_GENERAL_SLIDING = 0;
+    private static final int MSG_HANDLE_SLIDING = 0;
     private static final int MSG_NORMAL_CLAMP = 1;
     private static final int MSG_MAX_MIN_CLAMP = 2;
 
@@ -82,8 +76,8 @@ public class WheelView extends View {
             @Override
             public boolean handleMessage(Message msg) {
                 switch (msg.what) {
-                    case MSG_GENERAL_SLIDING:
-                        generalAnimSliding();
+                    case MSG_HANDLE_SLIDING:
+                        handleAnimSliding();
                         break;
                     case MSG_NORMAL_CLAMP:
                         clampItemDeg(CLAMP_NORMAL_DELTA_DEG, MSG_NORMAL_CLAMP);
@@ -99,33 +93,33 @@ public class WheelView extends View {
     }
 
     private void clampItemDeg(float clampDeltaDeg, int clampType) {
-        if (-distanceY*DISTANCE_TO_DEG < willToDeg) {// 向上滑动，到下一个item
-            if (Math.abs(-distanceY* DISTANCE_TO_DEG - willToDeg) <= clampDeltaDeg) {
-                distanceY = -willToDeg/ DISTANCE_TO_DEG;
+        if (-distanceY* distanceToDeg < willToDeg) {// 向上滑动，到下一个item
+            if (Math.abs(-distanceY* distanceToDeg - willToDeg) <= clampDeltaDeg) {
+                distanceY = -willToDeg/ distanceToDeg;
 
                 if (WheelView.this.stateValueListener != null) {
-                    int currIndex = (int)(-distanceY* DISTANCE_TO_DEG / INTER_ITEM_DEG);
-                    int arrIndex = currIndex + WHEEL_VIEW_DEG/INTER_ITEM_DEG/2;
+                    int currIndex = (int)(-distanceY* distanceToDeg / INTER_ITEM_DEG);
+                    int arrIndex = currIndex + wheelViewDeg /INTER_ITEM_DEG/2;
                     WheelView.this.stateValueListener.stateValue(currIndex, itemArr[arrIndex]);
                 }
 
             } else {
-                distanceY -= clampDeltaDeg/DISTANCE_TO_DEG;
+                distanceY -= clampDeltaDeg/ distanceToDeg;
                 WheelView.this.animHandler.sendEmptyMessage(clampType);
             }
 
-        } else if (-distanceY*DISTANCE_TO_DEG > willToDeg) {//向上滑动，回到上一个item
-            if (Math.abs(-distanceY* DISTANCE_TO_DEG - willToDeg) <= clampDeltaDeg) {
-                distanceY = -willToDeg/ DISTANCE_TO_DEG;
+        } else if (-distanceY* distanceToDeg > willToDeg) {//向上滑动，回到上一个item
+            if (Math.abs(-distanceY* distanceToDeg - willToDeg) <= clampDeltaDeg) {
+                distanceY = -willToDeg/ distanceToDeg;
 
                 if (WheelView.this.stateValueListener != null) {
-                    int currIndex = (int)(-distanceY* DISTANCE_TO_DEG / INTER_ITEM_DEG);
-                    int arrIndex = currIndex + WHEEL_VIEW_DEG/INTER_ITEM_DEG/2;
+                    int currIndex = (int)(-distanceY* distanceToDeg / INTER_ITEM_DEG);
+                    int arrIndex = currIndex + wheelViewDeg /INTER_ITEM_DEG/2;
                     WheelView.this.stateValueListener.stateValue(currIndex, itemArr[arrIndex]);
                 }
 
             } else {
-                distanceY += clampDeltaDeg/DISTANCE_TO_DEG;
+                distanceY += clampDeltaDeg/ distanceToDeg;
                 WheelView.this.animHandler.sendEmptyMessage(clampType);
             }
 
@@ -134,12 +128,12 @@ public class WheelView extends View {
         invalidate();
     }
 
-    private void generalAnimSliding() {
+    private void handleAnimSliding() {
         // itemArr.length-1: item --- item --- item, 3 - 1 = 2
-        float maxDeg = INTER_ITEM_DEG*(itemArr.length-1) - WHEEL_VIEW_DEG;
+        float maxDeg = INTER_ITEM_DEG*(itemArr.length-1) - wheelViewDeg;
 
         // 先判断再updateY，就会有溢出效果：此次事件时判断成立，updateY后下次事件就会溢出。
-        if ((-distanceY*DISTANCE_TO_DEG) > maxDeg) {// 向上滑动到头并溢出
+        if ((-distanceY*distanceToDeg) > maxDeg) {// 向上滑动到头并溢出
             yVelocity = 0f;
 
             willToDeg = maxDeg; // 向下返回到maxDeg
@@ -163,10 +157,10 @@ public class WheelView extends View {
         if (Math.abs(yVelocity) <= MIN_VELOCITY) { // clamp item deg
             yVelocity = 0f;
 
-            float offsetDeg = -distanceY* DISTANCE_TO_DEG % INTER_ITEM_DEG;
+            float offsetDeg = -distanceY* distanceToDeg % INTER_ITEM_DEG;
             float clampOffsetDeg = offsetDeg >= INTER_ITEM_DEG /2 ? INTER_ITEM_DEG - offsetDeg : -offsetDeg;
 
-            int index = (int)(-distanceY* DISTANCE_TO_DEG / INTER_ITEM_DEG);
+            int index = (int)(-distanceY* distanceToDeg / INTER_ITEM_DEG);
             willToDeg = clampOffsetDeg > 0f ? (index+1) * INTER_ITEM_DEG : index * INTER_ITEM_DEG;
 
             WheelView.this.animHandler.sendEmptyMessage(MSG_NORMAL_CLAMP);
@@ -174,7 +168,7 @@ public class WheelView extends View {
         }
 
         if (WheelView.this.isInfinity) {
-            animHandler.sendEmptyMessage(MSG_GENERAL_SLIDING);
+            animHandler.sendEmptyMessage(MSG_HANDLE_SLIDING);
 
         } else {
             // decrease the velocities.
@@ -182,15 +176,13 @@ public class WheelView extends View {
             yVelocity = Math.abs(yVelocity) <= yVelocityReduce ? 0f :
                     (yVelocity > 0 ? yVelocity - yVelocityReduce : yVelocity + yVelocityReduce);
 
-            animHandler.sendEmptyMessage(MSG_GENERAL_SLIDING);
+            animHandler.sendEmptyMessage(MSG_HANDLE_SLIDING);
         }
     }
 
     private void init() {
         initData(new String[]{"no data"});
-        camera.setLocation(0, 0, cameraLocationZ);
-
-        initPaintText(14f);
+        initPaintText(18f, "#333333");
         setPaintCenterRect();
     }
 
@@ -203,7 +195,7 @@ public class WheelView extends View {
             dataArr = new String[]{"no data"};
         }
 
-        int extra = WHEEL_VIEW_DEG / INTER_ITEM_DEG;
+        int extra = wheelViewDeg / INTER_ITEM_DEG;
         itemArr = new String[dataArr.length + extra];
         int offset = extra/2;
         for (int i = 0; i < offset; i++) {
@@ -221,18 +213,20 @@ public class WheelView extends View {
     public void setData(String[] dataArr) {
         initData(dataArr);
         getMaxItemSize();
-        invalidate();
+
+        setItem(0);
     }
 
-    private void initPaintText(float textSize) {
+    private void initPaintText(float textSize, String colorStr) {
+        paintText.setColor(Color.parseColor(colorStr));
         paintText.setTextSize(textSize);
         paintText.setTextAlign(Paint.Align.LEFT);
         getMaxItemSize();
     }
 
     // api
-    public void setPaintText(float textSize) {
-        initPaintText(textSize);
+    public void setPaintText(float textSize, String colorStr) {
+        initPaintText(textSize, colorStr);
         invalidate();
     }
 
@@ -254,16 +248,23 @@ public class WheelView extends View {
 
     // api
     public void setItem(int index) {
-        int extra = WHEEL_VIEW_DEG/INTER_ITEM_DEG;
+        int extra = wheelViewDeg /INTER_ITEM_DEG;
         if (index < 0 || index > itemArr.length - extra) {
             throw new ArrayIndexOutOfBoundsException(index);
         }
 
-        distanceY = -index * INTER_ITEM_DEG / DISTANCE_TO_DEG;
+        if (null != animHandler) {
+            animHandler.removeCallbacksAndMessages(null);
+        }
+
+        yVelocity = 0f;
+        //外界setData时，distanceToDeg还未进行有效设置
+        distanceY = distanceToDeg == -1f ? 0f : -index * INTER_ITEM_DEG / distanceToDeg;
+        invalidate();
+
         if (WheelView.this.stateValueListener != null) {
             WheelView.this.stateValueListener.stateValue(index, itemArr[index + extra/2]);
         }
-        invalidate();
     }
 
     // api
@@ -279,13 +280,13 @@ public class WheelView extends View {
 
     // api
     public void updateY(float movedY) {
-        if (-distanceY* DISTANCE_TO_DEG > INTER_ITEM_DEG *(itemArr.length-1) - WHEEL_VIEW_DEG
+        if (-distanceY* distanceToDeg > INTER_ITEM_DEG *(itemArr.length-1) - wheelViewDeg
                 || -distanceY < 0f) {
 
             movedY /= RESISTANCE_FACTOR;
         }
-        distanceY += movedY;
 
+        distanceY += movedY;
         invalidate();
     }
 
@@ -299,19 +300,27 @@ public class WheelView extends View {
         this.lastDeltaMilliseconds = lastDeltaMilliseconds;
         this.yVelocity = yVelocity;
 
-        animHandler.sendEmptyMessage(MSG_GENERAL_SLIDING);
+        animHandler.sendEmptyMessage(MSG_HANDLE_SLIDING);
     }
 
     @Override
     protected void onSizeChanged(int w, int h, int oldw, int oldh) {
         wheelViewWidth = w; //params value is in pixels not dp
         wheelViewHeight = h;
+        float projectionY = (h - getPaddingTop() - getPaddingBottom()) / 2f;
+
+        wheelRadius = projectionY * (float) Math.sin(wheelViewDeg /2 * DEG_TO_RADIAN);
+        distanceToDeg = 45f / wheelRadius; // wheelRadius --> 45°
+
+        float cameraLocationZ = (float) Math.tan(wheelViewDeg/2 * DEG_TO_RADIAN)*projectionY / CAMERA_LOCATION_Z_UNIT;
+        camera.setLocation(0, 0, -cameraLocationZ);
     }
 
     @Override
     protected void onDraw(Canvas canvas) {
         // translate canvas in order to locate the maxItem in the center of the WheelViwe
-        canvas.translate((wheelViewWidth - itemMaxWidth) / 2f, (wheelViewHeight - itemMaxHeight) / 2f);
+        canvas.translate((wheelViewWidth - itemMaxWidth) / 2f + getPaddingLeft()/2 - getPaddingRight()/2,
+                        (wheelViewHeight - itemMaxHeight) / 2f + getPaddingTop()/2 - getPaddingBottom()/2);
 
         drawWheelText(canvas);
 
@@ -319,7 +328,7 @@ public class WheelView extends View {
     }
 
     private void drawWheelText(Canvas canvas) {
-        float accumDeg = -distanceY * DISTANCE_TO_DEG;
+        float accumDeg = -distanceY * distanceToDeg;
         float driveDeg = accumDeg % INTER_ITEM_DEG; // 0 ~ 15，当向下滑动到头是，会变为负值。
 
         /**
@@ -337,21 +346,21 @@ public class WheelView extends View {
          *           <--  \    \    \    \    \    \    \    \     8个   1
          *           ... ...
          */
-        driveDeg += WHEEL_VIEW_DEG / 2; // 60 ~ 75
+        driveDeg += wheelViewDeg / 2; // 60 ~ 75
         // 循环8次
-        for (int i = 1, length = WHEEL_VIEW_DEG/INTER_ITEM_DEG; i <= length; i++) {
-            setCmaraMatrixAtIndex(driveDeg - i * INTER_ITEM_DEG);
+        for (int i = 1, length = wheelViewDeg /INTER_ITEM_DEG; i <= length; i++) {
+            setCameraMatrixAtIndex(driveDeg - i * INTER_ITEM_DEG);
             drawTextAtIndex(canvas, (int)(accumDeg / INTER_ITEM_DEG) + i);
         }
     }
 
-    private void setCmaraMatrixAtIndex(float deg) {
+    private void setCameraMatrixAtIndex(float deg) {
         cameraMatrix.reset();
 
         camera.save(); // save the original state(no any transformation) so you can restore it after any changes
         camera.rotateX(deg); // it will lead to rotate Y and Z axis
 //        camera.rotateZ(10f);              // it will NOT lead to rotate X axis
-        camera.translate(0f, 0f, -WHEEL_RADIUS);
+        camera.translate(0f, 0f, -wheelRadius);
         camera.getMatrix(cameraMatrix);
         camera.restore(); // restore to the original state after uses for next use
 
@@ -373,11 +382,12 @@ public class WheelView extends View {
     }
 
     private void drawCenterRect(Canvas canvas) {
-        canvas.drawLine(-.5f*itemMaxWidth, -.5f*itemMaxHeight, 1.5f*itemMaxWidth, -.5f*itemMaxHeight, paintCenterRect);
-        canvas.drawLine(-.5f*itemMaxWidth, 1.5f*itemMaxHeight, 1.5f*itemMaxWidth, 1.5f*itemMaxHeight, paintCenterRect);
-        // draw vertical radius
-        float scaledRadius = -cameraLocationZ*cameraLocationZ_UNIT/(float)Math.tan(WHEEL_VIEW_DEG/2*DEG_TO_RADIAN);
-        canvas.drawLine(itemMaxWidth / 2f, itemMaxHeight / 2f, itemMaxWidth / 2f, itemMaxHeight / 2f - scaledRadius, paintCenterRect);
+        // top line
+        canvas.drawLine(-.5f*itemMaxWidth, -.5f*itemMaxHeight,
+                        1.5f*itemMaxWidth, -.5f*itemMaxHeight, paintCenterRect);
+        // bottom line
+        canvas.drawLine(-.5f*itemMaxWidth, 1.5f*itemMaxHeight,
+                        1.5f*itemMaxWidth, 1.5f*itemMaxHeight, paintCenterRect);
     }
 
     @Override

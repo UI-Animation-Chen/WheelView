@@ -15,7 +15,7 @@
         android:text="cur item: "/>
     <TextView
         android:id="@+id/tv_value_curr_item"
-        android:layout_width="100dp"
+        android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_marginTop="10dp"
         android:layout_toRightOf="@+id/tv_cur_item"
@@ -30,7 +30,7 @@
         android:text="cur index: "/>
     <TextView
         android:id="@+id/tv_value_curr_index"
-        android:layout_width="100dp"
+        android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_marginTop="10dp"
         android:layout_toRightOf="@+id/tv_cur_index"
@@ -39,8 +39,9 @@
 
     <com.chenzhifei.wheelview.view.WheelView
         android:id="@+id/wheel_view"
-        android:layout_width="600dp"
-        android:layout_height="400dp"
+        android:layout_width="180dp"
+        android:layout_height="240dp"
+        android:padding="10dp"
         android:layout_centerInParent="true"
         android:background="#5777"/>
 

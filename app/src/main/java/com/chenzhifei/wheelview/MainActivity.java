@@ -2,6 +2,7 @@ package com.chenzhifei.wheelview;
 
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
+import android.util.Log;
 import android.view.MotionEvent;
 import android.view.View;
 import android.widget.TextView;
@@ -50,6 +51,7 @@ public class MainActivity extends AppCompatActivity {
 
         wheelViewController = new WheelViewController(wheelView);
         initData();
+        wheelView.setData(data);
     }
 
     private void initData() {
