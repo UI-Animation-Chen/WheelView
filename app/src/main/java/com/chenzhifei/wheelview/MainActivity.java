@@ -52,6 +52,7 @@ public class MainActivity extends AppCompatActivity {
         wheelViewController = new WheelViewController(wheelView);
         initData();
         wheelView.setData(data);
+        wheelView.setItem(6);
     }
 
     private void initData() {

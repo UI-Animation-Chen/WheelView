@@ -34,6 +34,7 @@ public class WheelView extends View {
 
     private float wheelRadius;
     private float distanceToDeg = -1f; // onSizeChanged里进行设置: wheelRadius --> 45°
+    private int initialItem = 0;
 
     private int wheelViewWidth = 0;
     private int wheelViewHeight = 0;
@@ -214,7 +215,18 @@ public class WheelView extends View {
         initData(dataArr);
         getMaxItemSize();
 
-        setItem(0);
+        yVelocity = 0f;
+        if (null != animHandler) {
+            animHandler.removeCallbacksAndMessages(null);
+        }
+
+        distanceY = 0f;
+        invalidate();
+
+        if (WheelView.this.stateValueListener != null) {
+            int extra = wheelViewDeg/INTER_ITEM_DEG;
+            WheelView.this.stateValueListener.stateValue(0, itemArr[0 + extra/2]);
+        }
     }
 
     private void initPaintText(float textSize, String colorStr) {
@@ -248,19 +260,23 @@ public class WheelView extends View {
 
     // api
     public void setItem(int index) {
-        int extra = wheelViewDeg /INTER_ITEM_DEG;
+        int extra = wheelViewDeg / INTER_ITEM_DEG;
         if (index < 0 || index > itemArr.length - extra) {
             throw new ArrayIndexOutOfBoundsException(index);
         }
 
+        yVelocity = 0f;
         if (null != animHandler) {
             animHandler.removeCallbacksAndMessages(null);
         }
 
-        yVelocity = 0f;
-        //外界setData时，distanceToDeg还未进行有效设置
-        distanceY = distanceToDeg == -1f ? 0f : -index * INTER_ITEM_DEG / distanceToDeg;
-        invalidate();
+        if (distanceToDeg == -1f) {
+            //外界在WheelView显示之前setItem时，distanceToDeg还未进行有效设置
+            initialItem = index;
+        } else {
+            distanceY = -index * INTER_ITEM_DEG / distanceToDeg;
+            invalidate();
+        }
 
         if (WheelView.this.stateValueListener != null) {
             WheelView.this.stateValueListener.stateValue(index, itemArr[index + extra/2]);
@@ -311,6 +327,9 @@ public class WheelView extends View {
 
         wheelRadius = projectionY * (float) Math.sin(wheelViewDeg /2 * DEG_TO_RADIAN);
         distanceToDeg = 45f / wheelRadius; // wheelRadius --> 45°
+
+        setItem(initialItem);
+        initialItem = 0; // 如果想不销毁wheelview重新进行relayout，radius会变化，之前的distanceY将无效。
 
         float cameraLocationZ = (float) Math.tan(wheelViewDeg/2 * DEG_TO_RADIAN)*projectionY / CAMERA_LOCATION_Z_UNIT;
         camera.setLocation(0, 0, -cameraLocationZ);
