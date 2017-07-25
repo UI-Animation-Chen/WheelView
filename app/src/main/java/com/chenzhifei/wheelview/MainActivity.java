@@ -42,7 +42,7 @@ public class MainActivity extends AppCompatActivity {
         findViewById(R.id.btn_set_text_size).setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                wheelView.setPaintText(24, null);
+                wheelView.setPaintText(40, null);
             }
         });
 

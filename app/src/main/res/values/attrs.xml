@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <declare-styleable name="WheelView">
+        <attr name="showItems" format="integer"/>
+        <attr name="wheelTextSize" format="dimension"/>
+        <attr name="wheelTextColor" format="color"/>
+    </declare-styleable>
+</resources>

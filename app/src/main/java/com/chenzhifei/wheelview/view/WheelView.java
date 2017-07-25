@@ -1,6 +1,7 @@
 package com.chenzhifei.wheelview.view;
 
 import android.content.Context;
+import android.content.res.TypedArray;
 import android.graphics.Camera;
 import android.graphics.Canvas;
 import android.graphics.Color;
@@ -13,6 +14,8 @@ import android.text.TextUtils;
 import android.util.AttributeSet;
 import android.view.View;
 
+import com.chenzhifei.wheelview.R;
+
 /**
  * Created by chenzhifei on 2017/6/25.
  * 使用Graphics.Camera实现WheelView的3D效果。
@@ -24,7 +27,8 @@ public class WheelView extends View {
     private static final float DEG_TO_RADIAN = (float) (Math.PI / 180.0f);
 
     private static final int INTER_ITEM_DEG = 15;  // 15°
-    private int wheelViewDeg = 120; // or 90°(120° - 2*15° = 90°)
+    private int wheelViewDeg;
+    private float projectionScaled;
 
     private static final int CAMERA_LOCATION_Z_UNIT = 72;
     private Camera camera = new Camera(); //default location: (0f, 0f, -8.0f), in pixels: -8.0f * 72 = -576f
@@ -35,13 +39,13 @@ public class WheelView extends View {
 
     private float wheelRadius;
     private float distanceToDeg = -1f; // onSizeChanged里进行设置: wheelRadius --> 45°
-    private int initialItem = 0;
+    private int initialItemIndex = 0;
     private float wheelMaxDeg;
 
-    private int wheelViewWidth = 0;
-    private int wheelViewHeight = 0;
-    private int itemMaxWidth = 0;
-    private int itemMaxHeight = 0;
+    private int wheelViewWidth;
+    private int wheelViewHeight;
+    private int itemMaxWidth;
+    private int itemMaxHeight;
 
     private String[] itemArr;
 
@@ -74,7 +78,7 @@ public class WheelView extends View {
     public WheelView(Context context, AttributeSet attrs, int defStyle) {
         super(context, attrs, defStyle);
 
-        init();
+        initAttrs(attrs);
         animHandler = new Handler(new Handler.Callback() {
             @Override
             public boolean handleMessage(Message msg) {
@@ -180,9 +184,24 @@ public class WheelView extends View {
         }
     }
 
-    private void init() {
+    private void initAttrs(AttributeSet attrs) {
+        TypedArray ta = getContext().obtainStyledAttributes(attrs, R.styleable.WheelView);
+        int showItems = ta.getInt(R.styleable.WheelView_showItems, 5);
+        float wheelTextSize = ta.getDimension(R.styleable.WheelView_wheelTextSize, 16);
+        int wheelTextColor = ta.getColor(R.styleable.WheelView_wheelTextColor, 0);
+        ta.recycle();
+
+        init(showItems, wheelTextSize, wheelTextColor);
+    }
+
+    private void init(int showItems, float wheelTextSize, int wheelTextColor) {
+        if (showItems < 0 || showItems%2 == 0) {
+            throw new IllegalArgumentException("showItems only can be 1, 3, 5, 7, 9...");
+        }
+        wheelViewDeg = (showItems+1) * INTER_ITEM_DEG;
+
         initData(new String[]{"no data"});
-        initPaintText(20f, "#333333");
+        initPaintText(wheelTextSize, wheelTextColor);
         getMaxItemSize();
         setPaintCenterRect();
     }
@@ -213,7 +232,10 @@ public class WheelView extends View {
         wheelMaxDeg = INTER_ITEM_DEG*(itemArr.length-1) - wheelViewDeg;
     }
 
-    // api
+    /**
+     * 设置wheelView的显示数据，可以在wheelview显示前设置，也可以在显示后设置。
+     * @param dataArr wheelView的数据源
+     */
     public void setData(String[] dataArr) {
         initData(dataArr);
         getMaxItemSize();
@@ -228,29 +250,39 @@ public class WheelView extends View {
 
         if (WheelView.this.stateValueListener != null) {
             int extra = wheelViewDeg/INTER_ITEM_DEG;
-            WheelView.this.stateValueListener.stateValue(0, itemArr[0 + extra/2]);
+            WheelView.this.stateValueListener.stateValue(0, itemArr[extra/2]);
         }
     }
 
-    private void initPaintText(float textSize, String colorStr) {
-        if (!TextUtils.isEmpty(colorStr)) {
-            paintText.setColor(Color.parseColor(colorStr));
+    private void initPaintText(float textSize, int textColor) {
+        if (textColor != -1) {
+            paintText.setColor(textColor);
         }
         if (textSize > 0) {
-            paintText.setTextSize(textSize);
+            projectionScaled = 1f / (1f - (float)Math.cos(wheelViewDeg*DEG_TO_RADIAN / 2));
+            paintText.setTextSize(textSize/projectionScaled);
         }
         paintText.setTextAlign(Paint.Align.LEFT);
     }
 
-    // api
-    public void setPaintText(float textSize, String colorStr) {
-        initPaintText(textSize, colorStr);
+    /**
+     * set textSize, textColorStr
+     * @param textSize      传入0表示不设置，单位为像素
+     * @param textColorStr  传入null表示不设置，字符串形式的颜色，如"#00ff00"，注意"#0f0"错误。
+     */
+    public void setPaintText(float textSize, String textColorStr) {
+        int textColor = -1;
+        if (!TextUtils.isEmpty(textColorStr)) {
+            textColor = Color.parseColor(textColorStr);
+        }
+        initPaintText(textSize, textColor);
         getMaxItemSize();
         invalidate();
     }
 
     private void getMaxItemSize() {
         Rect textRect = new Rect();
+        itemMaxWidth = itemMaxHeight = 0;
         for (String item : itemArr) {
             paintText.getTextBounds(item, 0, item.length(), textRect);
             if (textRect.width() > itemMaxWidth) {
@@ -265,7 +297,10 @@ public class WheelView extends View {
         paintCenterRect.setStrokeWidth(1);
     }
 
-    // api
+    /**
+     * 设置显示index位置的item
+     * @param index 要居中显示的item的索引。
+     */
     public void setItem(int index) {
         int extra = wheelViewDeg / INTER_ITEM_DEG;
         if (index < 0 || index > itemArr.length - extra) {
@@ -279,7 +314,7 @@ public class WheelView extends View {
 
         if (distanceToDeg == -1f) {
             //外界在WheelView显示之前setItem时，distanceToDeg还未进行有效设置
-            initialItem = index;
+            initialItemIndex = index;
         } else {
             distanceY = -index * INTER_ITEM_DEG / distanceToDeg;
             invalidate();
@@ -290,7 +325,10 @@ public class WheelView extends View {
         }
     }
 
-    // api
+    /**
+     * 设置wheelview的滑动速率衰减
+     * @param yVelocityReduce 1.3°/s 角度每秒
+     */
     public void setYVelocityReduce(float yVelocityReduce) {
         if (yVelocityReduce <= 0f) {
             this.isInfinity = true;
@@ -301,7 +339,10 @@ public class WheelView extends View {
         }
     }
 
-    // api
+    /**
+     * 滚动wheelview
+     * @param movedY 相邻两次MotionEvent事件之间手指滑动的像素值
+     */
     public void updateY(float movedY) {
         if (-distanceY* distanceToDeg > INTER_ITEM_DEG *(itemArr.length-1) - wheelViewDeg
                 || -distanceY < 0f) {
@@ -313,12 +354,18 @@ public class WheelView extends View {
         invalidate();
     }
 
-    // api
+    /**
+     * 手指接触屏幕(down事件)时调用。
+     */
     public void stopAnim() {
         animHandler.removeCallbacksAndMessages(null);
     }
 
-    // api
+    /**
+     * 手指离开屏幕(up事件)时调用。
+     * @param lastDeltaMilliseconds 最后相邻两次事件的时间差
+     * @param yVelocity 手指离开屏幕时的滑动速速
+     */
     public void startAnim(long lastDeltaMilliseconds, float yVelocity) {
         this.lastDeltaMilliseconds = lastDeltaMilliseconds;
         this.yVelocity = yVelocity;
@@ -335,8 +382,8 @@ public class WheelView extends View {
         wheelRadius = projectionY * (float) Math.sin(wheelViewDeg /2 * DEG_TO_RADIAN);
         distanceToDeg = 45f / wheelRadius; // wheelRadius --> 45°
 
-        setItem(initialItem);
-        initialItem = 0; // 如果想不销毁wheelview重新进行relayout，radius会变化，之前的distanceY将无效。
+        setItem(initialItemIndex);
+        initialItemIndex = 0; // 如果想不销毁wheelview重新进行relayout，radius会变化，之前的distanceY将无效。
 
         float cameraLocationZ = (float) Math.tan(wheelViewDeg/2 * DEG_TO_RADIAN)*projectionY / CAMERA_LOCATION_Z_UNIT;
         camera.setLocation(0, 0, -cameraLocationZ);
@@ -408,12 +455,14 @@ public class WheelView extends View {
     }
 
     private void drawCenterRect(Canvas canvas) {
+        float newLeft = -(projectionScaled-1) * itemMaxWidth/2;
+        float newTop = -(projectionScaled-1) * itemMaxHeight/2;
+        float newRight = (projectionScaled+1) * itemMaxWidth/2;
+        float newBottom = (projectionScaled+1) * itemMaxHeight/2;
         // top line
-        canvas.drawLine(-.5f*itemMaxWidth, -.5f*itemMaxHeight,
-                        1.5f*itemMaxWidth, -.5f*itemMaxHeight, paintCenterRect);
+        canvas.drawLine(newLeft, newTop, newRight, newTop, paintCenterRect);
         // bottom line
-        canvas.drawLine(-.5f*itemMaxWidth, 1.5f*itemMaxHeight,
-                        1.5f*itemMaxWidth, 1.5f*itemMaxHeight, paintCenterRect);
+        canvas.drawLine(newLeft, newBottom, newRight, newBottom, paintCenterRect);
     }
 
     @Override
@@ -425,12 +474,20 @@ public class WheelView extends View {
     }
 
     public interface StateValueListener {
+        /**
+         * wheelview滚动停止调用，提供当前的状态
+         * @param currIndex 居中item的索引
+         * @param currItem  居中item的值
+         */
         void stateValue(int currIndex, String currItem);
     }
 
     private StateValueListener stateValueListener;
 
-    // api
+    /**
+     * 设置wheelview的状态监听器，获取当前居中item的索引和值
+     * @param stateValueListener
+     */
     public void setStateValueListener(StateValueListener stateValueListener) {
         this.stateValueListener = stateValueListener;
     }
