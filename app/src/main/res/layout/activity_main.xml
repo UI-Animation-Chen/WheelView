@@ -37,6 +37,30 @@
         android:layout_below="@+id/tv_value_curr_item"
         android:text="-"/>
 
+    <Button
+        android:id="@+id/btn_set_data"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_below="@id/tv_cur_index"
+        android:layout_margin="5dp"
+        android:text="set data"/>
+
+    <Button
+        android:id="@+id/btn_set_item"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_below="@id/btn_set_data"
+        android:layout_margin="5dp"
+        android:text="set item 5"/>
+
+    <Button
+        android:id="@+id/btn_set_text_size"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_below="@id/btn_set_item"
+        android:layout_margin="5dp"
+        android:text="set text size"/>
+
     <com.chenzhifei.wheelview.view.WheelView
         android:id="@+id/wheel_view"
         android:layout_width="180dp"

@@ -27,16 +27,22 @@ public class MainActivity extends AppCompatActivity {
         final WheelView wheelView = (WheelView) findViewById(R.id.wheel_view);
         currItemValue = (TextView) findViewById(R.id.tv_value_curr_item);
         currIndexValue = (TextView) findViewById(R.id.tv_value_curr_index);
-        currItemValue.setOnClickListener(new View.OnClickListener() {
+        findViewById(R.id.btn_set_data).setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
                 wheelView.setData(data);
             }
         });
-        currIndexValue.setOnClickListener(new View.OnClickListener() {
+        findViewById(R.id.btn_set_item).setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
                 wheelView.setItem(5);
+            }
+        });
+        findViewById(R.id.btn_set_text_size).setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                wheelView.setPaintText(24, null);
             }
         });
 
@@ -51,8 +57,8 @@ public class MainActivity extends AppCompatActivity {
 
         wheelViewController = new WheelViewController(wheelView);
         initData();
-        wheelView.setData(data);
-        wheelView.setItem(6);
+//        wheelView.setData(data);
+//        wheelView.setItem(6);
     }
 
     private void initData() {

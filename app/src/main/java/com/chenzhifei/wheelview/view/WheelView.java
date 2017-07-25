@@ -9,6 +9,7 @@ import android.graphics.Paint;
 import android.graphics.Rect;
 import android.os.Handler;
 import android.os.Message;
+import android.text.TextUtils;
 import android.util.AttributeSet;
 import android.view.View;
 
@@ -35,6 +36,7 @@ public class WheelView extends View {
     private float wheelRadius;
     private float distanceToDeg = -1f; // onSizeChanged里进行设置: wheelRadius --> 45°
     private int initialItem = 0;
+    private float wheelMaxDeg;
 
     private int wheelViewWidth = 0;
     private int wheelViewHeight = 0;
@@ -130,14 +132,11 @@ public class WheelView extends View {
     }
 
     private void handleAnimSliding() {
-        // itemArr.length-1: item --- item --- item, 3 - 1 = 2
-        float maxDeg = INTER_ITEM_DEG*(itemArr.length-1) - wheelViewDeg;
-
         // 先判断再updateY，就会有溢出效果：此次事件时判断成立，updateY后下次事件就会溢出。
-        if ((-distanceY*distanceToDeg) > maxDeg) {// 向上滑动到头并溢出
+        if ((-distanceY*distanceToDeg) > wheelMaxDeg) {// 向上滑动到头并溢出
             yVelocity = 0f;
 
-            willToDeg = maxDeg; // 向下返回到maxDeg
+            willToDeg = wheelMaxDeg; // 向下返回到maxDeg
             WheelView.this.animHandler.sendEmptyMessage(MSG_MAX_MIN_CLAMP);
 
         } else if(-distanceY < 0f){ // 向下滑动到头并溢出
@@ -183,7 +182,8 @@ public class WheelView extends View {
 
     private void init() {
         initData(new String[]{"no data"});
-        initPaintText(18f, "#333333");
+        initPaintText(20f, "#333333");
+        getMaxItemSize();
         setPaintCenterRect();
     }
 
@@ -198,7 +198,7 @@ public class WheelView extends View {
 
         int extra = wheelViewDeg / INTER_ITEM_DEG;
         itemArr = new String[dataArr.length + extra];
-        int offset = extra/2;
+        int offset = extra / 2;
         for (int i = 0; i < offset; i++) {
             itemArr[i] = "";
         }
@@ -208,6 +208,9 @@ public class WheelView extends View {
         for (int i = itemArr.length - offset; i < itemArr.length; i++) {
             itemArr[i] = "";
         }
+
+        // itemArr.length-1: item --- item --- item, 3 - 1 = 2
+        wheelMaxDeg = INTER_ITEM_DEG*(itemArr.length-1) - wheelViewDeg;
     }
 
     // api
@@ -230,15 +233,19 @@ public class WheelView extends View {
     }
 
     private void initPaintText(float textSize, String colorStr) {
-        paintText.setColor(Color.parseColor(colorStr));
-        paintText.setTextSize(textSize);
+        if (!TextUtils.isEmpty(colorStr)) {
+            paintText.setColor(Color.parseColor(colorStr));
+        }
+        if (textSize > 0) {
+            paintText.setTextSize(textSize);
+        }
         paintText.setTextAlign(Paint.Align.LEFT);
-        getMaxItemSize();
     }
 
     // api
     public void setPaintText(float textSize, String colorStr) {
         initPaintText(textSize, colorStr);
+        getMaxItemSize();
         invalidate();
     }
 
