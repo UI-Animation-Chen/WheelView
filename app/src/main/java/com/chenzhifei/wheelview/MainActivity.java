@@ -62,8 +62,8 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void initData() {
-        data = new String[25];
-        for (int i = 0; i < 25; i++) {
+        data = new String[100];
+        for (int i = 0; i < 100; i++) {
             data[i] = "data-__|||TTLL" + i;
         }
     }

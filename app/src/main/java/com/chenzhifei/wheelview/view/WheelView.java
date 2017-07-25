@@ -26,8 +26,8 @@ public class WheelView extends View {
     private static final float RADIAN_TO_DEG = (float) (180.0f / Math.PI);
     private static final float DEG_TO_RADIAN = (float) (Math.PI / 180.0f);
 
-    private static final int INTER_ITEM_DEG = 15;  // 15°
-    private int wheelViewDeg;
+    private static final int WHEEL_VIEW_DEG = 120; // items show angle
+    private int interItemDeg;
     private float projectionScaled;
 
     private static final int CAMERA_LOCATION_Z_UNIT = 72;
@@ -38,9 +38,9 @@ public class WheelView extends View {
     private final Paint paintCenterRect = new Paint();
 
     private float wheelRadius;
-    private float distanceToDeg = -1f; // onSizeChanged里进行设置: wheelRadius --> 45°
+    private float distanceToDeg = -1f; // onSizeChanged里进行设置: wheelRadius --> 30°
     private int initialItemIndex = 0;
-    private float wheelMaxDeg;
+    private float maxSlideDeg;
 
     private int wheelViewWidth;
     private int wheelViewHeight;
@@ -101,12 +101,12 @@ public class WheelView extends View {
 
     private void clampItemDeg(float clampDeltaDeg, int clampType) {
         if (-distanceY* distanceToDeg < willToDeg) {// 向上滑动，到下一个item
-            if (Math.abs(-distanceY* distanceToDeg - willToDeg) <= clampDeltaDeg) {
-                distanceY = -willToDeg/ distanceToDeg;
+            if (Math.abs(-distanceY*distanceToDeg - willToDeg) <= clampDeltaDeg) {
+                distanceY = -willToDeg / distanceToDeg;
 
                 if (WheelView.this.stateValueListener != null) {
-                    int currIndex = (int)(-distanceY* distanceToDeg / INTER_ITEM_DEG);
-                    int arrIndex = currIndex + wheelViewDeg /INTER_ITEM_DEG/2;
+                    int currIndex = (int)(-distanceY*distanceToDeg / interItemDeg);
+                    int arrIndex = currIndex + (WHEEL_VIEW_DEG/interItemDeg)>>1;
                     WheelView.this.stateValueListener.stateValue(currIndex, itemArr[arrIndex]);
                 }
 
@@ -120,8 +120,8 @@ public class WheelView extends View {
                 distanceY = -willToDeg/ distanceToDeg;
 
                 if (WheelView.this.stateValueListener != null) {
-                    int currIndex = (int)(-distanceY* distanceToDeg / INTER_ITEM_DEG);
-                    int arrIndex = currIndex + wheelViewDeg /INTER_ITEM_DEG/2;
+                    int currIndex = (int)(-distanceY*distanceToDeg / interItemDeg);
+                    int arrIndex = currIndex + (WHEEL_VIEW_DEG/interItemDeg)>>1;
                     WheelView.this.stateValueListener.stateValue(currIndex, itemArr[arrIndex]);
                 }
 
@@ -137,10 +137,10 @@ public class WheelView extends View {
 
     private void handleAnimSliding() {
         // 先判断再updateY，就会有溢出效果：此次事件时判断成立，updateY后下次事件就会溢出。
-        if ((-distanceY*distanceToDeg) > wheelMaxDeg) {// 向上滑动到头并溢出
+        if ((-distanceY*distanceToDeg) > maxSlideDeg) {// 向上滑动到头并溢出
             yVelocity = 0f;
 
-            willToDeg = wheelMaxDeg; // 向下返回到maxDeg
+            willToDeg = maxSlideDeg; // 向下返回到maxSlideDeg
             WheelView.this.animHandler.sendEmptyMessage(MSG_MAX_MIN_CLAMP);
 
         } else if(-distanceY < 0f){ // 向下滑动到头并溢出
@@ -161,11 +161,11 @@ public class WheelView extends View {
         if (Math.abs(yVelocity) <= MIN_VELOCITY) { // clamp item deg
             yVelocity = 0f;
 
-            float offsetDeg = -distanceY* distanceToDeg % INTER_ITEM_DEG;
-            float clampOffsetDeg = offsetDeg >= INTER_ITEM_DEG /2 ? INTER_ITEM_DEG - offsetDeg : -offsetDeg;
+            float offsetDeg = -distanceY*distanceToDeg % interItemDeg;
+            float clampOffsetDeg = offsetDeg >= interItemDeg/2 ? interItemDeg - offsetDeg : -offsetDeg;
 
-            int index = (int)(-distanceY* distanceToDeg / INTER_ITEM_DEG);
-            willToDeg = clampOffsetDeg > 0f ? (index+1) * INTER_ITEM_DEG : index * INTER_ITEM_DEG;
+            int index = (int)(-distanceY*distanceToDeg / interItemDeg);
+            willToDeg = clampOffsetDeg > 0f ? (index+1) * interItemDeg : index * interItemDeg;
 
             WheelView.this.animHandler.sendEmptyMessage(MSG_NORMAL_CLAMP);
             return;
@@ -195,10 +195,10 @@ public class WheelView extends View {
     }
 
     private void init(int showItems, float wheelTextSize, int wheelTextColor) {
-        if (showItems < 0 || showItems > 9 || showItems%2 == 0) {
-            throw new IllegalArgumentException("showItems only can be 1, 3, 5, 7, 9");
+        if (showItems < 0 || showItems > 11 || showItems%2 == 0) {
+            throw new IllegalArgumentException("showItems only can be 1, 3, 5, 7, 9, 11");
         }
-        wheelViewDeg = (showItems+1) * INTER_ITEM_DEG;
+        interItemDeg = WHEEL_VIEW_DEG / (showItems+1);
 
         initData(new String[]{"no data"});
         initPaintText(wheelTextSize, wheelTextColor);
@@ -208,14 +208,14 @@ public class WheelView extends View {
 
     private void initData(String[] dataArr) {
         if (null == dataArr) {
-            throw new RuntimeException("dataArr can not be a null");
+            throw new NullPointerException("dataArr can not be a null");
         }
 
         if (dataArr.length == 0) {
             dataArr = new String[]{"no data"};
         }
 
-        int extra = wheelViewDeg / INTER_ITEM_DEG;
+        int extra = WHEEL_VIEW_DEG / interItemDeg;
         itemArr = new String[dataArr.length + extra];
         int offset = extra / 2;
         for (int i = 0; i < offset; i++) {
@@ -228,8 +228,12 @@ public class WheelView extends View {
             itemArr[i] = "";
         }
 
-        // itemArr.length-1: item --- item --- item, 3 - 1 = 2
-        wheelMaxDeg = INTER_ITEM_DEG*(itemArr.length-1) - wheelViewDeg;
+        /**
+         * itemArr.length-1: item --- item --- item, 3 - 1 = 2
+         *  0                                            max deg
+         * |-------<--WHEEL_VIEW_DEG-->--------------------|
+         */
+        maxSlideDeg = interItemDeg*(itemArr.length-1) - WHEEL_VIEW_DEG;
     }
 
     /**
@@ -249,7 +253,7 @@ public class WheelView extends View {
         invalidate();
 
         if (WheelView.this.stateValueListener != null) {
-            int extra = wheelViewDeg/INTER_ITEM_DEG;
+            int extra = WHEEL_VIEW_DEG / interItemDeg;
             WheelView.this.stateValueListener.stateValue(0, itemArr[extra/2]);
         }
     }
@@ -259,7 +263,7 @@ public class WheelView extends View {
             paintText.setColor(textColor);
         }
         if (textSize > 0) {
-            projectionScaled = 1f / (1f - (float)Math.cos(wheelViewDeg*DEG_TO_RADIAN / 2));
+            projectionScaled = 1f / (1f - (float)Math.cos(WHEEL_VIEW_DEG *DEG_TO_RADIAN / 2));
             paintText.setTextSize(textSize/projectionScaled);
         }
         paintText.setTextAlign(Paint.Align.LEFT);
@@ -302,7 +306,7 @@ public class WheelView extends View {
      * @param index 要居中显示的item的索引。
      */
     public void setItem(int index) {
-        int extra = wheelViewDeg / INTER_ITEM_DEG;
+        int extra = WHEEL_VIEW_DEG / interItemDeg;
         if (index < 0 || index > itemArr.length - extra) {
             throw new ArrayIndexOutOfBoundsException(index);
         }
@@ -316,7 +320,7 @@ public class WheelView extends View {
             //外界在WheelView显示之前setItem时，distanceToDeg还未进行有效设置
             initialItemIndex = index;
         } else {
-            distanceY = -index * INTER_ITEM_DEG / distanceToDeg;
+            distanceY = -index * interItemDeg / distanceToDeg;
             invalidate();
         }
 
@@ -344,9 +348,7 @@ public class WheelView extends View {
      * @param movedY 相邻两次MotionEvent事件之间手指滑动的像素值
      */
     public void updateY(float movedY) {
-        if (-distanceY* distanceToDeg > INTER_ITEM_DEG *(itemArr.length-1) - wheelViewDeg
-                || -distanceY < 0f) {
-
+        if (-distanceY*distanceToDeg > maxSlideDeg || -distanceY < 0f) {
             movedY /= RESISTANCE_FACTOR;
         }
 
@@ -377,13 +379,13 @@ public class WheelView extends View {
         wheelViewHeight = h;
         float projectionY = (h - getPaddingTop() - getPaddingBottom()) / 2f;
 
-        wheelRadius = projectionY * (float) Math.sin(wheelViewDeg/2 * DEG_TO_RADIAN);
-        distanceToDeg = 45f / wheelRadius; // wheelRadius --> 45°
+        wheelRadius = projectionY * (float) Math.sin((WHEEL_VIEW_DEG>>1) * DEG_TO_RADIAN);
+        distanceToDeg = 30f / wheelRadius; // wheelRadius --> 30°
 
         setItem(initialItemIndex);
         initialItemIndex = 0; // 如果想不销毁wheelview重新进行relayout，radius会变化，之前的distanceY将无效。
 
-        float cameraLocationZ = (float) Math.tan(wheelViewDeg/2 * DEG_TO_RADIAN)*projectionY / CAMERA_LOCATION_Z_UNIT;
+        float cameraLocationZ = 2*wheelRadius / CAMERA_LOCATION_Z_UNIT;
         camera.setLocation(0, 0, -cameraLocationZ);
     }
 
@@ -400,7 +402,7 @@ public class WheelView extends View {
 
     private void drawWheelText(Canvas canvas) {
         float accumDeg = -distanceY * distanceToDeg;
-        float driveDeg = accumDeg % INTER_ITEM_DEG; // 0 ~ 15，当向下滑动到头是，会变为负值。
+        float driveDeg = accumDeg % interItemDeg; // 0 ~ x，当向下滑动到头是，会变为负值。
 
         /**
          * 每转动15度循环一次。
@@ -417,11 +419,10 @@ public class WheelView extends View {
          *           <--  \    \    \    \    \    \    \    \     8个   1
          *           ... ...
          */
-        driveDeg += wheelViewDeg / 2; // 60 ~ 75
-        // 循环8次
-        for (int i = 1, length = wheelViewDeg /INTER_ITEM_DEG; i <= length; i++) {
-            setCameraMatrixAtIndex(driveDeg - i * INTER_ITEM_DEG);
-            drawTextAtIndex(canvas, (int)(accumDeg / INTER_ITEM_DEG) + i);
+        driveDeg += WHEEL_VIEW_DEG / 2; // 60 ~ 60+x
+        for (int i = 1, length = WHEEL_VIEW_DEG / interItemDeg; i <= length; i++) {
+            setCameraMatrixAtIndex(driveDeg - i * interItemDeg);
+            drawTextAtIndex(canvas, (int)(accumDeg / interItemDeg) + i);
         }
     }
 
