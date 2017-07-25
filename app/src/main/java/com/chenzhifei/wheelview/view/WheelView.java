@@ -53,7 +53,6 @@ public class WheelView extends View {
 
     private static final float MIN_VELOCITY = 50f; // pixels/second
     private float yVelocity = 0f;   // pixels/second
-    private long lastDeltaMilliseconds = 0;
     private boolean isInfinity = false;
     private float yVelocityReduce = 1f; //decrease 1 pixels/second when a message is handled in the loop
                         //loop frequency is 60hz or 120hz when handleMessage(msg) includes UI update code
@@ -157,7 +156,7 @@ public class WheelView extends View {
     }
 
     private void decelerationSliding() {
-        updateY(yVelocity * lastDeltaMilliseconds / 1000f);
+        updateY(yVelocity * 0.016f); // 0.016 = 1/60/1000 ms
 
         if (Math.abs(yVelocity) <= MIN_VELOCITY) { // clamp item deg
             yVelocity = 0f;
@@ -364,11 +363,9 @@ public class WheelView extends View {
 
     /**
      * 手指离开屏幕(up事件)时调用。
-     * @param lastDeltaMilliseconds 最后相邻两次事件的时间差，可为0
      * @param yVelocity 手指离开屏幕时的滑动速度，可为0
      */
-    public void startAnim(long lastDeltaMilliseconds, float yVelocity) {
-        this.lastDeltaMilliseconds = lastDeltaMilliseconds < 0 ? 0 : lastDeltaMilliseconds;
+    public void startAnim(float yVelocity) {
         this.yVelocity = yVelocity;
 
         animHandler.sendEmptyMessage(MSG_HANDLE_SLIDING);

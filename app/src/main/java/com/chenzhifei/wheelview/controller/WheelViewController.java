@@ -41,15 +41,14 @@ public class WheelViewController {
             }
 
             @Override
-            public void onUp(float upX, float upY, long upTime, long lastDeltaMilliseconds,
-                             float xVelocity, float yVelocity, float rotateDegVelocity, float scaledVelocity) {
+            public void onUp(float upX, float upY, long upTime, float xVelocity, float yVelocity) {
 
-                WheelViewController.this.wheelView.startAnim(lastDeltaMilliseconds, yVelocity);
+                WheelViewController.this.wheelView.startAnim(yVelocity);
             }
 
             @Override
             public void onCancel() {
-                WheelViewController.this.wheelView.startAnim(0, 0);
+                WheelViewController.this.wheelView.startAnim(0);
             }
         });
     }
