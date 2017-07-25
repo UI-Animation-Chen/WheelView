@@ -32,6 +32,9 @@ public class TwoFingersGestureDetector {
     public boolean onTouchEvent(MotionEvent event) {
         if (event.getPointerCount() > 2) {
             moreThan2Fingers = true;
+            if (twoFingersGestureListener != null) {
+                twoFingersGestureListener.onCancel();
+            }
         }
         switch (event.getActionMasked()) {
             case MotionEvent.ACTION_DOWN:
@@ -200,6 +203,11 @@ public class TwoFingersGestureDetector {
 
         // velocity: pixels/second   degrees/second
         void onUp(float upX, float upY, long upTime, long lastDeltaMilliseconds, float xVelocity, float yVelocity, float rotatedVelocity, float scaledVelocity);
+
+        /**
+         * invoked when more than 2 findgers
+         */
+        void onCancel();
     }
 
     private TwoFingersGestureListener twoFingersGestureListener;

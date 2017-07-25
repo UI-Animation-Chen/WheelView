@@ -64,7 +64,7 @@
 
     <com.chenzhifei.wheelview.view.WheelView
         android:id="@+id/wheel_view"
-        android:layout_width="140dp"
+        android:layout_width="160dp"
         android:layout_height="200dp"
         android:padding="10dp"
         android:layout_centerInParent="true"

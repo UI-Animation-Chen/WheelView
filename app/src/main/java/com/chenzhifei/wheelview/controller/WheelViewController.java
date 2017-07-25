@@ -46,6 +46,11 @@ public class WheelViewController {
 
                 WheelViewController.this.wheelView.startAnim(lastDeltaMilliseconds, yVelocity);
             }
+
+            @Override
+            public void onCancel() {
+                WheelViewController.this.wheelView.startAnim(0, 0);
+            }
         });
     }
 

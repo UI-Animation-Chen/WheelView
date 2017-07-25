@@ -49,8 +49,9 @@ public class WheelView extends View {
 
     private String[] itemArr;
 
-    private static final float MIN_VELOCITY = 50f; // pixels/second
     private float distanceY = 0f; //camera.rotateX()向下为负值，向上为正值，和屏幕y坐标相反。
+
+    private static final float MIN_VELOCITY = 50f; // pixels/second
     private float yVelocity = 0f;   // pixels/second
     private long lastDeltaMilliseconds = 0;
     private boolean isInfinity = false;
@@ -195,8 +196,8 @@ public class WheelView extends View {
     }
 
     private void init(int showItems, float wheelTextSize, int wheelTextColor) {
-        if (showItems < 0 || showItems%2 == 0) {
-            throw new IllegalArgumentException("showItems only can be 1, 3, 5, 7, 9...");
+        if (showItems < 0 || showItems > 9 || showItems%2 == 0) {
+            throw new IllegalArgumentException("showItems only can be 1, 3, 5, 7, 9");
         }
         wheelViewDeg = (showItems+1) * INTER_ITEM_DEG;
 
@@ -363,11 +364,11 @@ public class WheelView extends View {
 
     /**
      * 手指离开屏幕(up事件)时调用。
-     * @param lastDeltaMilliseconds 最后相邻两次事件的时间差
-     * @param yVelocity 手指离开屏幕时的滑动速速
+     * @param lastDeltaMilliseconds 最后相邻两次事件的时间差，可为0
+     * @param yVelocity 手指离开屏幕时的滑动速度，可为0
      */
     public void startAnim(long lastDeltaMilliseconds, float yVelocity) {
-        this.lastDeltaMilliseconds = lastDeltaMilliseconds;
+        this.lastDeltaMilliseconds = lastDeltaMilliseconds < 0 ? 0 : lastDeltaMilliseconds;
         this.yVelocity = yVelocity;
 
         animHandler.sendEmptyMessage(MSG_HANDLE_SLIDING);
@@ -379,7 +380,7 @@ public class WheelView extends View {
         wheelViewHeight = h;
         float projectionY = (h - getPaddingTop() - getPaddingBottom()) / 2f;
 
-        wheelRadius = projectionY * (float) Math.sin(wheelViewDeg /2 * DEG_TO_RADIAN);
+        wheelRadius = projectionY * (float) Math.sin(wheelViewDeg/2 * DEG_TO_RADIAN);
         distanceToDeg = 45f / wheelRadius; // wheelRadius --> 45°
 
         setItem(initialItemIndex);
@@ -455,10 +456,11 @@ public class WheelView extends View {
     }
 
     private void drawCenterRect(Canvas canvas) {
+        float verticalOffset = itemMaxHeight;
         float newLeft = -(projectionScaled-1) * itemMaxWidth/2;
-        float newTop = -(projectionScaled-1) * itemMaxHeight/2;
+        float newTop = -(projectionScaled-1) * itemMaxHeight/2 - verticalOffset;
         float newRight = (projectionScaled+1) * itemMaxWidth/2;
-        float newBottom = (projectionScaled+1) * itemMaxHeight/2;
+        float newBottom = (projectionScaled+1) * itemMaxHeight/2 + verticalOffset;
         // top line
         canvas.drawLine(newLeft, newTop, newRight, newTop, paintCenterRect);
         // bottom line
