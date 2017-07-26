@@ -106,7 +106,7 @@ public class WheelView extends View {
 
                 if (WheelView.this.stateValueListener != null) {
                     int currIndex = (int)(-distanceY*distanceToDeg / interItemDeg);
-                    int arrIndex = currIndex + (WHEEL_VIEW_DEG/interItemDeg)>>1;
+                    int arrIndex = currIndex + ((WHEEL_VIEW_DEG/interItemDeg)>>1);
                     WheelView.this.stateValueListener.stateValue(currIndex, itemArr[arrIndex]);
                 }
 
@@ -121,7 +121,7 @@ public class WheelView extends View {
 
                 if (WheelView.this.stateValueListener != null) {
                     int currIndex = (int)(-distanceY*distanceToDeg / interItemDeg);
-                    int arrIndex = currIndex + (WHEEL_VIEW_DEG/interItemDeg)>>1;
+                    int arrIndex = currIndex + ((WHEEL_VIEW_DEG/interItemDeg)>>1);
                     WheelView.this.stateValueListener.stateValue(currIndex, itemArr[arrIndex]);
                 }
 
@@ -156,7 +156,7 @@ public class WheelView extends View {
     }
 
     private void decelerationSliding() {
-        updateY(yVelocity * 0.016f); // 0.016 = 1/60/1000 ms
+        updateY(yVelocity * 0.0167f); // 0.0167 = 1/60/1000 ms
 
         if (Math.abs(yVelocity) <= MIN_VELOCITY) { // clamp item deg
             yVelocity = 0f;
@@ -263,7 +263,7 @@ public class WheelView extends View {
             paintText.setColor(textColor);
         }
         if (textSize > 0) {
-            projectionScaled = 1f / (1f - (float)Math.cos(WHEEL_VIEW_DEG *DEG_TO_RADIAN / 2));
+            projectionScaled = 1f / (1f - (float)Math.cos((WHEEL_VIEW_DEG>>1) * DEG_TO_RADIAN));
             paintText.setTextSize(textSize/projectionScaled);
         }
         paintText.setTextAlign(Paint.Align.LEFT);
@@ -405,7 +405,7 @@ public class WheelView extends View {
         float driveDeg = accumDeg % interItemDeg; // 0 ~ x，当向下滑动到头是，会变为负值。
 
         /**
-         * 每转动15度循环一次。
+         * 每转动x度循环一次。
          *   不显示   60   45   30   15    0   -15  -30  -45  -60  不显示
          *  ----------\----\----\----\----\----\----\----\----\----------
          *   初始化    !    \    \    \    \    \    \    \    !    7个   0    !：不显示
@@ -419,7 +419,7 @@ public class WheelView extends View {
          *           <--  \    \    \    \    \    \    \    \     8个   1
          *           ... ...
          */
-        driveDeg += WHEEL_VIEW_DEG / 2; // 60 ~ 60+x
+        driveDeg += WHEEL_VIEW_DEG>>1; // 60 ~ 60+x
         for (int i = 1, length = WHEEL_VIEW_DEG / interItemDeg; i <= length; i++) {
             setCameraMatrixAtIndex(driveDeg - i * interItemDeg);
             drawTextAtIndex(canvas, (int)(accumDeg / interItemDeg) + i);
