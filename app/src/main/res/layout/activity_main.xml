@@ -68,7 +68,7 @@
         android:layout_height="200dp"
         android:padding="10dp"
         android:layout_centerInParent="true"
-        android:background="#5777"
+        android:background="#fff"
         wheelView:showItems="7"
         wheelView:wheelTextSize="16sp"
         wheelView:wheelTextColor="#333"/>

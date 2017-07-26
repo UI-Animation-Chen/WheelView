@@ -5,9 +5,11 @@ import android.content.res.TypedArray;
 import android.graphics.Camera;
 import android.graphics.Canvas;
 import android.graphics.Color;
+import android.graphics.LinearGradient;
 import android.graphics.Matrix;
 import android.graphics.Paint;
 import android.graphics.Rect;
+import android.graphics.Shader;
 import android.os.Handler;
 import android.os.Message;
 import android.text.TextUtils;
@@ -35,7 +37,10 @@ public class WheelView extends View {
                                           //will NOT be changed by camera.translateZ
     private final Matrix cameraMatrix = new Matrix();
     private final Paint paintText = new Paint(Paint.ANTI_ALIAS_FLAG);
-    private final Paint paintCenterRect = new Paint();
+    private static final Paint paintTopLayer = new Paint();
+    private static final Paint paintBottomLayer = new Paint();
+    private static final int centerLayerColor = Color.parseColor("#00ffffff");
+    private static final int edgeLayerColor = Color.parseColor("#ddffffff");
 
     private float wheelRadius;
     private float distanceToDeg = -1f; // onSizeChanged里进行设置: wheelRadius --> 30°
@@ -186,9 +191,9 @@ public class WheelView extends View {
 
     private void initAttrs(AttributeSet attrs) {
         TypedArray ta = getContext().obtainStyledAttributes(attrs, R.styleable.WheelView);
-        int showItems = ta.getInt(R.styleable.WheelView_showItems, 5);
+        int showItems = ta.getInt(R.styleable.WheelView_showItems, 7);
         float wheelTextSize = ta.getDimension(R.styleable.WheelView_wheelTextSize, 16);
-        int wheelTextColor = ta.getColor(R.styleable.WheelView_wheelTextColor, 0);
+        int wheelTextColor = ta.getColor(R.styleable.WheelView_wheelTextColor, Color.parseColor("#333333"));
         ta.recycle();
 
         init(showItems, wheelTextSize, wheelTextColor);
@@ -203,7 +208,6 @@ public class WheelView extends View {
         initData(new String[]{"no data"});
         initPaintText(wheelTextSize, wheelTextColor);
         getMaxItemSize();
-        setPaintCenterRect();
     }
 
     private void initData(String[] dataArr) {
@@ -296,9 +300,14 @@ public class WheelView extends View {
         }
     }
 
-    private void setPaintCenterRect() {
-        paintCenterRect.setColor(Color.parseColor("#0000ff"));
-        paintCenterRect.setStrokeWidth(1);
+    private void setPaintLayer(int wheelViewHeight) {
+        LinearGradient topLg = new LinearGradient(0, -(wheelViewHeight>>1), 0, 0,
+                edgeLayerColor, centerLayerColor, Shader.TileMode.MIRROR);
+        LinearGradient bottomLg = new LinearGradient(0, 0, 0, wheelViewHeight>>1,
+                centerLayerColor, edgeLayerColor, Shader.TileMode.MIRROR);
+
+        paintTopLayer.setShader(topLg);
+        paintBottomLayer.setShader(bottomLg);
     }
 
     /**
@@ -382,11 +391,13 @@ public class WheelView extends View {
         wheelRadius = projectionY * (float) Math.sin((WHEEL_VIEW_DEG>>1) * DEG_TO_RADIAN);
         distanceToDeg = 30f / wheelRadius; // wheelRadius --> 30°
 
+        float cameraLocationZ = 2*wheelRadius / CAMERA_LOCATION_Z_UNIT;
+        camera.setLocation(0, 0, -cameraLocationZ);
+
         setItem(initialItemIndex);
         initialItemIndex = 0; // 如果想不销毁wheelview重新进行relayout，radius会变化，之前的distanceY将无效。
 
-        float cameraLocationZ = 2*wheelRadius / CAMERA_LOCATION_Z_UNIT;
-        camera.setLocation(0, 0, -cameraLocationZ);
+        setPaintLayer(h);
     }
 
     @Override
@@ -397,7 +408,7 @@ public class WheelView extends View {
 
         drawWheelText(canvas);
 
-        drawCenterRect(canvas);
+        drawLayer(canvas);
     }
 
     private void drawWheelText(Canvas canvas) {
@@ -453,16 +464,15 @@ public class WheelView extends View {
         canvas.restore();
     }
 
-    private void drawCenterRect(Canvas canvas) {
+    private void drawLayer(Canvas canvas) {
         float verticalOffset = itemMaxHeight;
-        float newLeft = -(projectionScaled-1) * itemMaxWidth/2;
         float newTop = -(projectionScaled-1) * itemMaxHeight/2 - verticalOffset;
-        float newRight = (projectionScaled+1) * itemMaxWidth/2;
         float newBottom = (projectionScaled+1) * itemMaxHeight/2 + verticalOffset;
-        // top line
-        canvas.drawLine(newLeft, newTop, newRight, newTop, paintCenterRect);
-        // bottom line
-        canvas.drawLine(newLeft, newBottom, newRight, newBottom, paintCenterRect);
+
+        // top layer
+        canvas.drawRect(-wheelViewWidth, newTop - (wheelViewHeight>>1), wheelViewWidth, newTop, paintTopLayer);
+        // bottom layer
+        canvas.drawRect(-wheelViewWidth, newBottom, wheelViewWidth, newBottom + (wheelViewHeight>>1), paintBottomLayer);
     }
 
     @Override
