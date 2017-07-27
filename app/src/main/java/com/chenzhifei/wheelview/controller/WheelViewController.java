@@ -18,7 +18,7 @@ public class WheelViewController {
 
     public WheelViewController(WheelView wheelView) {
         this.wheelView = wheelView;
-        this.wheelView.setYVelocityReduce(3f);
+        this.wheelView.setYVelocityReduce(50f);
 
         twoFingersGestureDetector = new TwoFingersGestureDetector();
         twoFingersGestureDetector.setTwoFingersGestureListener(new TwoFingersGestureDetector.TwoFingersGestureListener() {

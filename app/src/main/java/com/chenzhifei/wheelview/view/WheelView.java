@@ -59,7 +59,7 @@ public class WheelView extends View {
     private static final float MIN_VELOCITY = 50f; // pixels/second
     private float yVelocity = 0f;   // pixels/second
     private boolean isInfinity = false;
-    private float yVelocityReduce = 1f; //decrease 1 pixels/second when a message is handled in the loop
+    private float yVelocityReduce = 50f; //decrease 50 pixels/second when a message is handled in the loop
                         //loop frequency is 60hz or 120hz when handleMessage(msg) includes UI update code
 
     private static final int RESISTANCE_FACTOR = 4; // 滑动到头时，有效滑动变为 4 分之一
@@ -192,7 +192,7 @@ public class WheelView extends View {
     private void initAttrs(AttributeSet attrs) {
         TypedArray ta = getContext().obtainStyledAttributes(attrs, R.styleable.WheelView);
         int showItems = ta.getInt(R.styleable.WheelView_showItems, 7);
-        float wheelTextSize = ta.getDimension(R.styleable.WheelView_wheelTextSize, 16);
+        float wheelTextSize = ta.getDimension(R.styleable.WheelView_wheelTextSize, 32); //32 --> 16sp
         int wheelTextColor = ta.getColor(R.styleable.WheelView_wheelTextColor, Color.parseColor("#333333"));
         ta.recycle();
 
