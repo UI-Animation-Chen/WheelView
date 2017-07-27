@@ -29,8 +29,8 @@ public class WheelView extends View {
     private static final float DEG_TO_RADIAN = (float) (Math.PI / 180.0f);
 
     private static final int WHEEL_VIEW_DEG = 120; // items show angle
+    private static final float PROJECTION_SCALED = 1/(1-(float)Math.cos((WHEEL_VIEW_DEG>>1)*DEG_TO_RADIAN));
     private int interItemDeg;
-    private float projectionScaled;
 
     private static final int CAMERA_LOCATION_Z_UNIT = 72;
     private Camera camera = new Camera(); //default location: (0f, 0f, -8.0f), in pixels: -8.0f * 72 = -576f
@@ -192,7 +192,7 @@ public class WheelView extends View {
     private void initAttrs(AttributeSet attrs) {
         TypedArray ta = getContext().obtainStyledAttributes(attrs, R.styleable.WheelView);
         int showItems = ta.getInt(R.styleable.WheelView_showItems, 7);
-        float wheelTextSize = ta.getDimension(R.styleable.WheelView_wheelTextSize, 32); //32 --> 16sp
+        float wheelTextSize = ta.getDimension(R.styleable.WheelView_wheelTextSize, 32); //32 -> 16sp
         int wheelTextColor = ta.getColor(R.styleable.WheelView_wheelTextColor, Color.parseColor("#333333"));
         ta.recycle();
 
@@ -267,8 +267,7 @@ public class WheelView extends View {
             paintText.setColor(textColor);
         }
         if (textSize > 0) {
-            projectionScaled = 1f / (1f - (float)Math.cos((WHEEL_VIEW_DEG>>1) * DEG_TO_RADIAN));
-            paintText.setTextSize(textSize/projectionScaled);
+            paintText.setTextSize(textSize/ PROJECTION_SCALED);
         }
         paintText.setTextAlign(Paint.Align.LEFT);
     }
@@ -391,7 +390,7 @@ public class WheelView extends View {
         wheelRadius = projectionY * (float) Math.sin((WHEEL_VIEW_DEG>>1) * DEG_TO_RADIAN);
         distanceToDeg = 30f / wheelRadius; // wheelRadius --> 30°
 
-        float cameraLocationZ = 2*wheelRadius / CAMERA_LOCATION_Z_UNIT;
+        float cameraLocationZ = PROJECTION_SCALED*wheelRadius / CAMERA_LOCATION_Z_UNIT;
         camera.setLocation(0, 0, -cameraLocationZ);
 
         setItem(initialItemIndex);
@@ -466,8 +465,8 @@ public class WheelView extends View {
 
     private void drawLayer(Canvas canvas) {
         float verticalOffset = itemMaxHeight;
-        float newTop = -(projectionScaled-1) * itemMaxHeight/2 - verticalOffset;
-        float newBottom = (projectionScaled+1) * itemMaxHeight/2 + verticalOffset;
+        float newTop = -(PROJECTION_SCALED -1) * itemMaxHeight/2 - verticalOffset;
+        float newBottom = (PROJECTION_SCALED +1) * itemMaxHeight/2 + verticalOffset;
 
         // top layer
         canvas.drawRect(-wheelViewWidth, newTop - (wheelViewHeight>>1), wheelViewWidth, newTop, paintTopLayer);
@@ -496,7 +495,7 @@ public class WheelView extends View {
 
     /**
      * 设置wheelview的状态监听器，获取当前居中item的索引和值
-     * @param stateValueListener
+     * @param stateValueListener listener
      */
     public void setStateValueListener(StateValueListener stateValueListener) {
         this.stateValueListener = stateValueListener;
