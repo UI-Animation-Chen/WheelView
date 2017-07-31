@@ -25,7 +25,11 @@ import com.chenzhifei.wheelview.R;
 
 public class WheelView extends View {
 
-    private static final float RADIAN_TO_DEG = (float) (180.0f / Math.PI);
+    public static final int TEXT_ALIGN_CENTER = 0;
+    public static final int TEXT_ALIGN_LEFT = 1;
+    public static final int TEXT_ALIGN_RIGHT = 2;
+    private int textAlign;
+
     private static final float DEG_TO_RADIAN = (float) (Math.PI / 180.0f);
 
     private static final int WHEEL_VIEW_DEG = 120; // items show angle
@@ -194,19 +198,20 @@ public class WheelView extends View {
         int showItems = ta.getInt(R.styleable.WheelView_showItems, 7);
         float wheelTextSize = ta.getDimension(R.styleable.WheelView_wheelTextSize, 32); //32 -> 16sp
         int wheelTextColor = ta.getColor(R.styleable.WheelView_wheelTextColor, Color.parseColor("#333333"));
+        int textAlign = ta.getInt(R.styleable.WheelView_wheelTextAlign, TEXT_ALIGN_CENTER);
         ta.recycle();
 
-        init(showItems, wheelTextSize, wheelTextColor);
+        init(showItems, wheelTextSize, wheelTextColor, textAlign);
     }
 
-    private void init(int showItems, float wheelTextSize, int wheelTextColor) {
+    private void init(int showItems, float wheelTextSize, int wheelTextColor, int textAlign) {
         if (showItems < 0 || showItems > 11 || showItems%2 == 0) {
             throw new IllegalArgumentException("showItems only can be 1, 3, 5, 7, 9, 11");
         }
         interItemDeg = WHEEL_VIEW_DEG / (showItems+1);
 
         initData(new String[]{"no data"});
-        initPaintText(wheelTextSize, wheelTextColor);
+        initPaintText(wheelTextSize, wheelTextColor, textAlign);
         getMaxItemSize();
     }
 
@@ -262,29 +267,74 @@ public class WheelView extends View {
         }
     }
 
-    private void initPaintText(float textSize, int textColor) {
+    private void initPaintText(float textSize, int textColor, int textAlign) {
         if (textColor != -1) {
             paintText.setColor(textColor);
         }
+
         if (textSize > 0) {
             paintText.setTextSize(textSize/ PROJECTION_SCALED);
         }
-        paintText.setTextAlign(Paint.Align.LEFT);
+
+        this.textAlign = textAlign;
+
+        switch (textAlign) {
+            case TEXT_ALIGN_CENTER:
+                paintText.setTextAlign(Paint.Align.CENTER);
+                break;
+            case TEXT_ALIGN_LEFT:
+                paintText.setTextAlign(Paint.Align.LEFT);
+                break;
+            case TEXT_ALIGN_RIGHT:
+                paintText.setTextAlign(Paint.Align.RIGHT);
+                break;
+            default: // same as center
+                paintText.setTextAlign(Paint.Align.CENTER);
+                break;
+        }
     }
 
     /**
-     * set textSize, textColorStr
-     * @param textSize      传入0表示不设置，单位为像素
-     * @param textColorStr  传入null表示不设置，字符串形式的颜色，如"#00ff00"，注意"#0f0"错误。
+     * set textSize, textColorStr, textAlign
+     * @param textSize      0表示不设置，单位为像素
+     * @param textColorStr  null表示不设置，字符串形式的颜色，如"#00ff00"，注意"#0f0"错误。
+     * @param textAlign     小于0的值表示不设置
      */
-    public void setPaintText(float textSize, String textColorStr) {
+    private void setPaintText(float textSize, String textColorStr, int textAlign) {
         int textColor = -1;
         if (!TextUtils.isEmpty(textColorStr)) {
             textColor = Color.parseColor(textColorStr);
         }
-        initPaintText(textSize, textColor);
+        if (textAlign < 0) { // 初始化的时候不会小于0，只能是用户后来设置的。
+            textAlign = this.textAlign;
+        }
+        initPaintText(textSize, textColor, textAlign);
         getMaxItemSize();
         invalidate();
+    }
+
+    /**
+     * 设置字体大小
+     * @param textSize 单位为像素
+     */
+    public void setWheelTextSize(float textSize) {
+        setPaintText(textSize, null, -1);
+    }
+
+    /**
+     * 设置字体颜色
+     * @param textColorStr 字符串形式的颜色，如"#00ff00"，注意"#0f0"错误。
+     */
+    public void setWheelTextColor(String textColorStr) {
+        setPaintText(0, textColorStr, -1);
+    }
+
+    /**
+     * 设置字体对齐方式
+     * @param textAlign 取值为 WheelView.TEXT_ALIGN_CENTER, WheelView.TEXT_ALIGN_LEFT, WheelView.TEXT_ALIGN_RIGHT
+     */
+    public void setWheelTextAlign(int textAlign) {
+        setPaintText(0, null, textAlign);
     }
 
     private void getMaxItemSize() {
@@ -299,7 +349,8 @@ public class WheelView extends View {
         }
     }
 
-    private void setPaintLayer(int wheelViewHeight) {
+    private void setPaintLayer() {
+        // 尺寸并没有严格按照位置来设置，不影响观感即可
         LinearGradient topLg = new LinearGradient(0, -(wheelViewHeight>>1), 0, 0,
                 edgeLayerColor, centerLayerColor, Shader.TileMode.MIRROR);
         LinearGradient bottomLg = new LinearGradient(0, 0, 0, wheelViewHeight>>1,
@@ -396,21 +447,43 @@ public class WheelView extends View {
         setItem(initialItemIndex);
         initialItemIndex = 0; // 如果想不销毁wheelview重新进行relayout，radius会变化，之前的distanceY将无效。
 
-        setPaintLayer(h);
+        setPaintLayer();
     }
 
     @Override
     protected void onDraw(Canvas canvas) {
-        // translate canvas in order to locate the maxItem in the center of the WheelViwe
-        canvas.translate((wheelViewWidth - itemMaxWidth) / 2f + getPaddingLeft()/2 - getPaddingRight()/2,
-                        (wheelViewHeight - itemMaxHeight) / 2f + getPaddingTop()/2 - getPaddingBottom()/2);
+        float canvasTranslateX, cameraMatrixtranslateX, textOriginX;
+        switch (textAlign) {
+            case TEXT_ALIGN_CENTER:
+                canvasTranslateX = (wheelViewWidth-itemMaxWidth)/2f;
+                cameraMatrixtranslateX = itemMaxWidth/2f;
+                textOriginX = itemMaxWidth / 2;
+                break;
+            case TEXT_ALIGN_LEFT:
+                canvasTranslateX = getPaddingLeft();
+                cameraMatrixtranslateX = 0f;
+                textOriginX = 0f;
+                break;
+            case TEXT_ALIGN_RIGHT:
+                canvasTranslateX = wheelViewWidth - itemMaxWidth - getPaddingRight();
+                cameraMatrixtranslateX = itemMaxWidth;
+                textOriginX = itemMaxWidth;
+                break;
+            default: // same as center
+                canvasTranslateX = (wheelViewWidth-itemMaxWidth)/2f;
+                cameraMatrixtranslateX = itemMaxWidth/2f;
+                textOriginX = itemMaxWidth / 2;
+                break;
+        }
+        // translate canvas in order to locate the maxItem in the left/center/right of the WheelView
+        canvas.translate(canvasTranslateX, (wheelViewHeight-itemMaxHeight)/2f + getPaddingTop()/2 - getPaddingBottom()/2);
 
-        drawWheelText(canvas);
+        drawWheelText(canvas, cameraMatrixtranslateX, textOriginX);
 
         drawLayer(canvas);
     }
 
-    private void drawWheelText(Canvas canvas) {
+    private void drawWheelText(Canvas canvas, float cameraMatrixtranslateX, float textOriginX) {
         float accumDeg = -distanceY * distanceToDeg;
         float driveDeg = accumDeg % interItemDeg; // 0 ~ x，当向下滑动到头是，会变为负值。
 
@@ -431,12 +504,12 @@ public class WheelView extends View {
          */
         driveDeg += WHEEL_VIEW_DEG>>1; // 60 ~ 60+x
         for (int i = 1, length = WHEEL_VIEW_DEG / interItemDeg; i <= length; i++) {
-            setCameraMatrixAtIndex(driveDeg - i * interItemDeg);
-            drawTextAtIndex(canvas, (int)(accumDeg / interItemDeg) + i);
+            setCameraMatrixAtIndex(driveDeg - i * interItemDeg, cameraMatrixtranslateX);
+            drawTextAtIndex(canvas, (int)(accumDeg / interItemDeg) + i, textOriginX);
         }
     }
 
-    private void setCameraMatrixAtIndex(float deg) {
+    private void setCameraMatrixAtIndex(float deg, float cameraMatrixtranslateX) {
         cameraMatrix.reset();
 
         camera.save(); // save the original state(no any transformation) so you can restore it after any changes
@@ -446,12 +519,12 @@ public class WheelView extends View {
         camera.getMatrix(cameraMatrix);
         camera.restore(); // restore to the original state after uses for next use
 
-        // translate coordinate origin the camera's transformation depends on to center of the bitmap
-        cameraMatrix.preTranslate(-(itemMaxWidth / 2), -(itemMaxHeight / 2));
-        cameraMatrix.postTranslate(itemMaxWidth / 2, itemMaxHeight / 2);
+        // translate coordinate origin the camera's transformation depends on to left/center/right of the bitmap
+        cameraMatrix.preTranslate(-cameraMatrixtranslateX, -(itemMaxHeight / 2));
+        cameraMatrix.postTranslate(cameraMatrixtranslateX, itemMaxHeight / 2);
     }
 
-    private void drawTextAtIndex(Canvas canvas, int index) {
+    private void drawTextAtIndex(Canvas canvas, int index, float textOriginX) {
         if (index >= itemArr.length) {
             index = itemArr.length - 1;
         } else if (index < 0) {
@@ -459,7 +532,7 @@ public class WheelView extends View {
         }
         canvas.save();
         canvas.concat(cameraMatrix);
-        canvas.drawText(itemArr[index], 0, itemMaxHeight, paintText);
+        canvas.drawText(itemArr[index], textOriginX, itemMaxHeight, paintText);
         canvas.restore();
     }
 
@@ -468,6 +541,7 @@ public class WheelView extends View {
         float newTop = -(PROJECTION_SCALED -1) * itemMaxHeight/2 - verticalOffset;
         float newBottom = (PROJECTION_SCALED +1) * itemMaxHeight/2 + verticalOffset;
 
+        // 尺寸没有严格按照位置设置，但保证了不影响观感。减少精确尺寸计算，可以提高onDraw效率。
         // top layer
         canvas.drawRect(-wheelViewWidth, newTop - (wheelViewHeight>>1), wheelViewWidth, newTop, paintTopLayer);
         // bottom layer

@@ -2,7 +2,6 @@ package com.chenzhifei.wheelview;
 
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
-import android.util.Log;
 import android.view.MotionEvent;
 import android.view.View;
 import android.widget.TextView;
@@ -16,6 +15,8 @@ public class MainActivity extends AppCompatActivity {
     private TextView currIndexValue;
 
     private String[] data;
+
+    private int textAlign = WheelView.TEXT_ALIGN_CENTER;
 
     private WheelViewController wheelViewController;
 
@@ -42,7 +43,24 @@ public class MainActivity extends AppCompatActivity {
         findViewById(R.id.btn_set_text_size).setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                wheelView.setPaintText(40, null);
+                wheelView.setWheelTextSize(40);
+            }
+        });
+        findViewById(R.id.btn_switch_text_align).setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                switch (textAlign) {
+                    case WheelView.TEXT_ALIGN_CENTER:
+                        textAlign = WheelView.TEXT_ALIGN_RIGHT;
+                        break;
+                    case WheelView.TEXT_ALIGN_LEFT:
+                        textAlign = WheelView.TEXT_ALIGN_CENTER;
+                        break;
+                    case WheelView.TEXT_ALIGN_RIGHT:
+                        textAlign = WheelView.TEXT_ALIGN_LEFT;
+                        break;
+                }
+                wheelView.setWheelTextAlign(textAlign);
             }
         });
 

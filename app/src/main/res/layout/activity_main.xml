@@ -52,7 +52,7 @@
         android:layout_height="wrap_content"
         android:layout_below="@id/btn_set_data"
         android:layout_margin="5dp"
-        android:text="set item 5"/>
+        android:text="set item to 5"/>
 
     <Button
         android:id="@+id/btn_set_text_size"
@@ -61,6 +61,14 @@
         android:layout_below="@id/btn_set_item"
         android:layout_margin="5dp"
         android:text="set text size"/>
+
+    <Button
+        android:id="@+id/btn_switch_text_align"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_below="@id/btn_set_text_size"
+        android:layout_margin="5dp"
+        android:text="switch text align"/>
 
     <com.chenzhifei.wheelview.view.WheelView
         android:id="@+id/wheel_view"
@@ -71,6 +79,7 @@
         android:background="#fff"
         wheelView:showItems="7"
         wheelView:wheelTextSize="16sp"
-        wheelView:wheelTextColor="#333"/>
+        wheelView:wheelTextColor="#333"
+        wheelView:wheelTextAlign="center"/>
 
 </RelativeLayout>
