@@ -46,11 +46,18 @@
         android:layout_margin="5dp"
         android:text="set data"/>
 
+    <TextView
+        android:id="@+id/text"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_below="@id/btn_set_data"
+        android:text="请先setData"/>
+
     <Button
         android:id="@+id/btn_set_item"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:layout_below="@id/btn_set_data"
+        android:layout_below="@+id/text"
         android:layout_margin="5dp"
         android:text="set item to 5"/>
 

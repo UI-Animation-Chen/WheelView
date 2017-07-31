@@ -519,7 +519,7 @@ public class WheelView extends View {
         camera.getMatrix(cameraMatrix);
         camera.restore(); // restore to the original state after uses for next use
 
-        // translate coordinate origin the camera's transformation depends on to left/center/right of the bitmap
+        // translate coordinate origin that camera's transformation depends on to left/center/right of the maxItem
         cameraMatrix.preTranslate(-cameraMatrixtranslateX, -(itemMaxHeight / 2));
         cameraMatrix.postTranslate(cameraMatrixtranslateX, itemMaxHeight / 2);
     }
