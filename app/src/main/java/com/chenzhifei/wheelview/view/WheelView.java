@@ -32,14 +32,31 @@ public class WheelView extends View {
 
     private static final float DEG_TO_RADIAN = (float) (Math.PI / 180.0f);
 
-    private static final int WHEEL_VIEW_DEG = 120; // items show angle
+    private static final int WHEEL_VIEW_DEG = 120; // wheelview show angle
     // distanceZ will lead to scale up or down the view.
-    private static final float PROJECTION_SCALED = 1/(1-(float)Math.cos((WHEEL_VIEW_DEG>>1)*DEG_TO_RADIAN));
+    private static final float PROJECTION_SCALED =
+            1/(1-(float)Math.cos((WHEEL_VIEW_DEG>>1)*DEG_TO_RADIAN));
     private int interItemDeg; // deg between two adjacent items。
 
+    /**
+     *              | y
+     *              |
+     *              |  / z
+     *              | /
+     *     ___-x____|/____x__________
+     *             /|(0,0)           |
+     *            / |                |
+     *    camera *  |                |
+     *          /   |     screen     |
+     *      -z /    |                |
+     *           -y |                |
+     *              |________________|
+     *
+     * camera model:
+     * default location: (0f, 0f, -8.0f), in pixels: -8.0f * 72 = -576f
+     */
     private static final int CAMERA_LOCATION_Z_UNIT = 72;
-    private Camera camera = new Camera(); //default location: (0f, 0f, -8.0f), in pixels: -8.0f * 72 = -576f
-                                          //will NOT be changed by camera.translateZ
+    private Camera camera = new Camera();
     private final Matrix cameraMatrix = new Matrix();
     private final Paint paintText = new Paint(Paint.ANTI_ALIAS_FLAG);
     private static final Paint paintTopLayer = new Paint();
@@ -48,7 +65,7 @@ public class WheelView extends View {
     private static final int edgeLayerColor = Color.parseColor("#ddffffff");
 
     private float wheelRadius; // wheelView item's distanceZ.
-    private float distanceToDeg = -1f; // onSizeChanged里进行设置: wheelRadius --> 30°
+    private float distanceToDeg = -1f; // will be set in onSizeChanged().
     private int initItemIndex = 0;
     private float maxSlideDeg;
 
@@ -59,7 +76,7 @@ public class WheelView extends View {
 
     private String[] itemArr;
 
-    private float distanceY = 0f; //camera.rotateX()向下为负值，向上为正值，和屏幕y坐标相反。
+    private float distanceY = 0f; // camera's y axis direction is opposite to screen's.
 
     private static final float MIN_VELOCITY = 50f; // pixels/second
     private float yVelocity = 0f;   // pixels/second
@@ -67,8 +84,8 @@ public class WheelView extends View {
     private float yVelocityReduce = 50f; //decrease 50 pixels/second when a message is handled in the loop
                         //loop frequency is 60hz or 120hz when handleMessage(msg) includes UI update code
 
-    private static final int RESISTANCE_FACTOR = 4; // 滑动到头时，有效滑动变为 4 分之一
-    private static final float CLAMP_MAX_MIN_DELTA_DEG = 2.0f; // 2.0°
+    private static final int RESISTANCE_FACTOR = 4; // valid updateY become 1/4 when is overscrolling.
+    private static final float CLAMP_MAX_MIN_DELTA_DEG = 2.0f; // 2.0°, four times as normal.
     private static final float CLAMP_NORMAL_DELTA_DEG = 0.5f; // 0.5°/16.67ms ~ 30°/s, or twice
     private float willToDeg = 0f;
 
@@ -109,32 +126,21 @@ public class WheelView extends View {
     }
 
     private void clampItemDeg(float clampDeltaDeg, int clampType) {
-        if (-distanceY*distanceToDeg < willToDeg) { // 向上滑动，到下一个item
-            if (Math.abs(-distanceY*distanceToDeg - willToDeg) <= clampDeltaDeg) {
-                distanceY = -willToDeg / distanceToDeg;
+        if (Math.abs(-distanceY*distanceToDeg - willToDeg) <= clampDeltaDeg) { // complete.
+            distanceY = -willToDeg / distanceToDeg;
 
-                if (WheelView.this.stateValueListener != null) {
-                    int currIndex = (int)(-distanceY*distanceToDeg / interItemDeg);
-                    int arrIndex = currIndex + ((WHEEL_VIEW_DEG/interItemDeg)>>1);
-                    WheelView.this.stateValueListener.stateValue(currIndex, itemArr[arrIndex]);
-                }
-            } else {
-                distanceY -= clampDeltaDeg/ distanceToDeg;
-                WheelView.this.animHandler.sendEmptyMessage(clampType);
+            if (WheelView.this.stateValueListener != null) {
+                int currIndex = (int) (-distanceY * distanceToDeg / interItemDeg);
+                int arrIndex = currIndex + ((WHEEL_VIEW_DEG / interItemDeg) >> 1);
+                WheelView.this.stateValueListener.stateValue(currIndex, itemArr[arrIndex]);
             }
-        } else if (-distanceY*distanceToDeg > willToDeg) { // 向下滑动，回到上一个item
-            if (Math.abs(-distanceY*distanceToDeg - willToDeg) <= clampDeltaDeg) {
-                distanceY = -willToDeg / distanceToDeg;
-
-                if (WheelView.this.stateValueListener != null) {
-                    int currIndex = (int)(-distanceY*distanceToDeg / interItemDeg);
-                    int arrIndex = currIndex + ((WHEEL_VIEW_DEG/interItemDeg)>>1);
-                    WheelView.this.stateValueListener.stateValue(currIndex, itemArr[arrIndex]);
-                }
-            } else {
-                distanceY += clampDeltaDeg / distanceToDeg;
-                WheelView.this.animHandler.sendEmptyMessage(clampType);
+        } else { // continue clamp.
+            if (-distanceY*distanceToDeg < willToDeg) {        // go forward to next item.
+                distanceY -= clampDeltaDeg / distanceToDeg; // 'increase' distanceY.
+            } else if (-distanceY*distanceToDeg > willToDeg) { // go back to previous item.
+                distanceY += clampDeltaDeg / distanceToDeg; // 'decrease' distanceY.
             }
+            WheelView.this.animHandler.sendEmptyMessage(clampType);
         }
         invalidate();
     }
@@ -166,10 +172,10 @@ public class WheelView extends View {
             yVelocity = 0f;
 
             float offsetDeg = -distanceY*distanceToDeg % interItemDeg;
-            float clampOffsetDeg = offsetDeg >= interItemDeg/2 ? interItemDeg - offsetDeg : -offsetDeg;
+            float clampOffsetDeg = offsetDeg >= interItemDeg/2 ? interItemDeg-offsetDeg : -offsetDeg;
 
             int index = (int)(-distanceY*distanceToDeg / interItemDeg);
-            willToDeg = clampOffsetDeg > 0f ? (index+1) * interItemDeg : index * interItemDeg;
+            willToDeg = clampOffsetDeg > 0f ? (index+1)*interItemDeg : index*interItemDeg;
 
             WheelView.this.animHandler.sendEmptyMessage(MSG_NORMAL_CLAMP);
             return;
@@ -326,7 +332,8 @@ public class WheelView extends View {
 
     /**
      * 设置字体对齐方式
-     * @param textAlign 取值为 WheelView.TEXT_ALIGN_CENTER, WheelView.TEXT_ALIGN_LEFT, WheelView.TEXT_ALIGN_RIGHT
+     * @param textAlign 取值为 WheelView.TEXT_ALIGN_CENTER,
+     *                  WheelView.TEXT_ALIGN_LEFT, WheelView.TEXT_ALIGN_RIGHT
      */
     public void setWheelTextAlign(int textAlign) {
         setPaintText(0, null, textAlign);
@@ -471,7 +478,8 @@ public class WheelView extends View {
                 break;
         }
         // translate canvas in order to locate the maxItem in the left/center/right of the WheelView
-        canvas.translate(canvasTranslateX, (wheelViewHeight-itemMaxHeight)/2f + getPaddingTop()/2 - getPaddingBottom()/2);
+        canvas.translate(canvasTranslateX,
+                (wheelViewHeight-itemMaxHeight)/2f + getPaddingTop()/2 - getPaddingBottom()/2);
 
         drawWheelText(canvas, textTranslateX, textOriginX);
 
@@ -480,34 +488,35 @@ public class WheelView extends View {
 
     private void drawWheelText(Canvas canvas, float textTranslateX, float textOriginX) {
         float accumDeg = -distanceY * distanceToDeg;
-        float driveDeg = accumDeg % interItemDeg; // 0 ~ x，当向下滑动到头时，会变为负值。
+        float driveDeg = accumDeg % interItemDeg; // 0 ~ interItemDeg，当向下滑动到头时，会变为负值。
         /**
          * 每转动x度循环一次。
-         * 9个位置，最边上两个位置刚好斜切，不显示。
+         * 9个位置，两头的两个位置刚好斜切，不显示。
          *   不显示   60   45   30   15    0   -15  -30  -45  -60  不显示
          *  ----------\----\----\----\----\----\----\----\----\----------
-         *   初始化    !    \    \    \    \    \    \    \    !    7个   0  !：刚好斜切，不显示。
+         *   初始化    !    \    \    \    \    \    \    \    !    7个  0 !：刚好斜切，不显示。
          *   驱动范围：
-         *           <--  \    \    \    \    \    \    \    \     8个   1
-         *          <--  \    \    \    \    \    \    \    \      8个   2
-         *         <--  \    \    \    \    \    \    \    \       8个   3
-         *        <--  \    \    \    \    \    \    \    \        8个   4
+         *           <--  \    \    \    \    \    \    \    \     8个  1
+         *          <--  \    \    \    \    \    \    \    \      8个  2
+         *         <--  \    \    \    \    \    \    \    \       8个  3
+         *        <--  \    \    \    \    \    \    \    \        8个  4
          *   重复：
-         *       <--  !    \    \    \    \    \    \    \    !    7个   0
-         *           <--  \    \    \    \    \    \    \    \     8个   1
+         *       <--  !    \    \    \    \    \    \    \    !    7个  0
+         *           <--  \    \    \    \    \    \    \    \     8个  1
          *           ... ...
          */
         driveDeg += WHEEL_VIEW_DEG>>1; // 60 ~ 60+x
         for (int i = 1, length = WHEEL_VIEW_DEG/interItemDeg; i <= length; i++) {
-            setCameraMatrixAtIndex(driveDeg - i * interItemDeg, textTranslateX);
-            drawTextAtIndex(canvas, (int)(accumDeg / interItemDeg) + i, textOriginX);
+            setCameraMatrixAtIndex(driveDeg - i*interItemDeg, textTranslateX);
+            drawTextAtIndex(canvas, (int)(accumDeg/interItemDeg) + i, textOriginX);
         }
     }
 
     private void setCameraMatrixAtIndex(float deg, float textTranslateX) {
         cameraMatrix.reset();
 
-        camera.save(); // save the original state(no any transformation) so you can restore it after any changes
+        camera.save(); // save the original state(no any transformation) so you
+                       // can restore it after any changes
         camera.rotateX(deg); // it will lead to rotate Y and Z axis
         // y,z axis 3D effects.
 //        camera.rotateY(-10f); // it will lead to rotate Z axis
@@ -516,7 +525,8 @@ public class WheelView extends View {
         camera.getMatrix(cameraMatrix);
         camera.restore(); // restore to the original state after uses for next use
 
-        // translate coordinate origin that camera's transformation depends on to left/center/right of the maxItem
+        // translate coordinate origin that camera's transformation depends on
+        // to left/center/right of the maxItem
         cameraMatrix.preTranslate(-textTranslateX, -(itemMaxHeight / 2));
         cameraMatrix.postTranslate(textTranslateX, itemMaxHeight / 2);
     }
@@ -540,9 +550,11 @@ public class WheelView extends View {
 
         // 尺寸没有严格按照位置设置，但保证了不影响观感。减少精确尺寸计算，可以提高onDraw效率。
         // top layer
-        canvas.drawRect(-wheelViewWidth, newTop - (wheelViewHeight>>1), wheelViewWidth, newTop, paintTopLayer);
+        canvas.drawRect(-wheelViewWidth, newTop - (wheelViewHeight>>1),
+                wheelViewWidth, newTop, paintTopLayer);
         // bottom layer
-        canvas.drawRect(-wheelViewWidth, newBottom, wheelViewWidth, newBottom + (wheelViewHeight>>1), paintBottomLayer);
+        canvas.drawRect(-wheelViewWidth, newBottom, wheelViewWidth,
+                newBottom + (wheelViewHeight>>1), paintBottomLayer);
     }
 
     @Override

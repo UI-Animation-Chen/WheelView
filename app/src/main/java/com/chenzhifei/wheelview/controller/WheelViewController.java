@@ -21,7 +21,8 @@ public class WheelViewController {
         this.wheelView.setYVelocityReduce(50f);
 
         twoFingersGestureDetector = new TwoFingersGestureDetector();
-        twoFingersGestureDetector.setTwoFingersGestureListener(new TwoFingersGestureDetector.TwoFingersGestureListener() {
+        twoFingersGestureDetector.setTwoFingersGestureListener(
+                new TwoFingersGestureDetector.TwoFingersGestureListener() {
             @Override
             public void onDown(float downX, float downY, long downTime) {
                 WheelViewController.this.wheelView.stopAnim();
@@ -37,7 +38,8 @@ public class WheelViewController {
             }
 
             @Override
-            public void onScaled(float deltaScaledX, float deltaScaledY, float deltaScaledDistance, long deltaMilliseconds) {
+            public void onScaled(float deltaScaledX, float deltaScaledY,
+                                 float deltaScaledDistance, long deltaMilliseconds) {
             }
 
             @Override
