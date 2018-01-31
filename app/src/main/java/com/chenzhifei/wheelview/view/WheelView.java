@@ -160,8 +160,7 @@ public class WheelView extends View {
             WheelView.this.animHandler.sendEmptyMessage(MSG_MAX_MIN_CLAMP);
 
         } else {
-            // 惯性滑动
-            decelerationSliding();
+            decelerationSliding(); // 惯性滑动
         }
     }
 
@@ -220,7 +219,6 @@ public class WheelView extends View {
         if (null == dataArr) {
             throw new NullPointerException("dataArr can not be a null");
         }
-
         if (dataArr.length == 0) {
             dataArr = new String[]{"no data"};
         }
@@ -237,7 +235,6 @@ public class WheelView extends View {
         for (int i = itemArr.length - offset; i < itemArr.length; i++) {
             itemArr[i] = "";
         }
-
         /**
          * itemArr.length-1: item --- item --- item, 3 - 1 = 2
          *  0                                            max deg
@@ -478,8 +475,9 @@ public class WheelView extends View {
                 break;
         }
         // translate canvas in order to locate the maxItem in the left/center/right of the WheelView
-        canvas.translate(canvasTranslateX,
-                (wheelViewHeight-itemMaxHeight)/2f + getPaddingTop()/2 - getPaddingBottom()/2);
+        int wheelViewH = wheelViewHeight - getPaddingTop() - getPaddingBottom();
+        float canvasTranslateY = (wheelViewH-itemMaxHeight)/2 + getPaddingTop();
+        canvas.translate(canvasTranslateX, canvasTranslateY);
 
         drawWheelText(canvas, textTranslateX, textOriginX);
 
